@@ -15,6 +15,8 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 5. Final button: **Post** (or the clock icon to schedule). Press only with the user's yes.
 6. LinkedIn processes the video after posting and shows a "your post is ready" notice with **View post**. Open it and copy the link for the report; if it is still processing, say so.
 
+7. First comment (when `first_comment` is not empty): on the published post, **Comment**, paste the text, **Comment** / **Post**. Check that it is written as the same author (you or the company page) as the post.
+
 Notes
 - Limits: 15 minutes and 5 GB on the web. Longer → tell the user; do not cut the video unless asked.
 - Keep links where the user put them; do not move them to a comment unless asked.
