@@ -165,6 +165,61 @@ class FormFlow(unittest.TestCase):
         self.http("/api/decision", {"action": "cancel"})
         self.assertEqual(self.cli("wait", "submit"), {"action": "cancel"})
 
+    def test_prefill_thumbnail_and_refine(self):
+        thumb = os.path.join(self.tmp, "thumb.png")
+        with open(thumb, "wb") as f:
+            f.write(b"png")
+        prefill = os.path.join(self.tmp, "prefill.json")
+        with open(prefill, "w", encoding="utf-8") as f:
+            json.dump({"videos": {"wide": {"video": self.files["wide.mp4"], "thumbnail": thumb}, "tall": {"video": self.files["tall.mp4"], "thumbnail": thumb}},
+                       "description_file": self.files["desc.md"], "hints": ["also found x.mp4"]}, f)
+        self.cli("stop")
+        self.srv = self.cli("start", "--no-open", "--prefill", prefill)
+        state = self.http("/api/state")[1]
+        self.assertEqual(state["phase"], "form")  # the Files screen is shown filled in, not skipped
+        self.assertEqual(state["form"]["videos"]["wide"]["thumbnail"], thumb)
+        self.assertEqual(state["hints"], ["also found x.mp4"])
+
+        form = self.form(platforms={"youtube": "both", "tiktok": "tall"})
+        form["videos"]["wide"]["thumbnail"] = form["videos"]["tall"]["thumbnail"] = thumb
+        self.assertEqual(self.http("/api/submit", form)[0], 200)
+        sys.path.insert(0, S)
+        import prepare
+        pv = prepare.prepare(self.cli("wait", "submit"), {"title": "t", "description": "d", "tags": []}, self.state)
+        by = {p["id"]: p for p in pv["posts"]}
+        self.assertEqual(by["youtube-wide"]["thumbnail"], thumb)
+        self.assertIsNone(by["youtube-tall"]["thumbnail"])  # Shorts take none
+        self.assertFalse(by["youtube-tall"]["thumbnail_info"]["ok"])
+        self.assertTrue(by["tiktok-tall"]["thumbnail_info"]["text"].startswith("Cover"))
+
+        self.http("/api/preview", pv)
+        self.assertEqual(self.http("/api/decision", {"action": "refine", "instruction": " "})[0], 400)
+        code, _ = self.http("/api/decision", {"action": "refine", "instruction": "shorter title",
+                                              "posts": [{"id": "youtube-wide", "fields": {"title": "typed by user"}}]})
+        self.assertEqual(code, 200)
+        state = self.http("/api/state")[1]
+        self.assertEqual((state["phase"], state["note"]), ("preparing", "Claude is applying your changes…"))
+        decision = self.cli("wait", "decision")
+        self.assertEqual((decision["action"], decision["instruction"]), ("refine", "shorter title"))
+        with open(decision["file"], encoding="utf-8") as f:
+            current = json.load(f)
+        self.assertEqual(current["posts"][0]["fields"][0]["value"], "typed by user")  # the user's own edit is kept
+        current["posts"][0]["fields"][0]["value"] = "short"
+        with open(decision["file"], "w", encoding="utf-8") as f:
+            json.dump(current, f)
+        self.cli("preview", decision["file"])
+        self.assertEqual(self.http("/api/state")[1]["phase"], "preview")
+        self.http("/api/decision", {"action": "post", "posts": []})
+        self.assertEqual(self.cli("wait", "decision")["posts"][0]["fields"][0]["value"], "short")
+
+    def test_drop_copies_small_image(self):
+        import base64
+        code, data = self.http("/api/drop", {"name": "t.png", "b64": base64.b64encode(b"\x89PNG").decode()})
+        self.assertEqual(code, 200)
+        with open(data["path"], "rb") as f:
+            self.assertEqual(f.read(), b"\x89PNG")
+        self.assertEqual(self.http("/api/drop", {"name": "t.png", "b64": "!!"})[0], 400)
+
     def test_fallback_shape(self):
         form = self.form(videos={"wide": {"video": self.files["wide.mp4"], "srt": ""}, "tall": {"video": "", "srt": ""}},
                          platforms={"youtube": "both", "tiktok": "tall"})

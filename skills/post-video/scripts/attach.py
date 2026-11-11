@@ -7,7 +7,7 @@ folder the session can read, and prints two JavaScript snippets. The first adds 
 input to the page that collects the parts; the second joins them into one file, byte for byte,
 and hands it to the site's own file input (or drops it on a drop zone).
 
-  attach.py split FILE [--dir DIR] [--accept video|srt|any] [--selector CSS] [--drop CSS]
+  attach.py split FILE [--dir DIR] [--accept video|srt|image|any] [--selector CSS] [--drop CSS]
       Prints JSON: parts (paths, in order), setup_js, finish_js, cleanup_js, name, size.
       --dir      a folder the session can read; default: the current directory
       --accept   which of the site's file inputs to use when --selector is not given
@@ -67,6 +67,7 @@ FINISH_JS = """(async () => {
   const all = [...document.querySelectorAll('input[type=file]')].filter(i => i.id !== 'vp-part-input');
   const fits = i => { const a = (i.accept || '').toLowerCase();
     return want.accept === 'video' ? (!a || /video|mp4|mov|\\*/.test(a))
+         : want.accept === 'image' ? (!a || /image|png|jpe?g|\\*/.test(a))
          : want.accept === 'srt' ? (!a || /srt|vtt|text|\\*|caption|subtitle/.test(a)) && !/^(video|image)\\/[^,]*$/.test(a)
          : true; };
   const target = want.selector ? document.querySelector(want.selector) : (all.filter(fits)[0] || null);
@@ -129,7 +130,7 @@ def main():
     s = sub.add_parser("split")
     s.add_argument("file")
     s.add_argument("--dir", default=".")
-    s.add_argument("--accept", choices=("video", "srt", "any"), default="any")
+    s.add_argument("--accept", choices=("video", "srt", "image", "any"), default="any")
     s.add_argument("--selector")
     s.add_argument("--drop")
     c = sub.add_parser("clean")

@@ -151,6 +151,17 @@ def prepare(form, post, work):
                 srt_file = cap["clean_file"]
                 captions = {"ok": True, "text": f"Captions: {os.path.basename(v['srt'])} · {cap['cues']} lines · {lang}"}
 
+            thumb = v.get("thumbnail") or None
+            if not thumb:
+                thumbnail_info = None
+            elif platform == "youtube" and s == "tall":
+                thumb, thumbnail_info = None, {"ok": False, "text": "Thumbnail skipped: YouTube Shorts take no custom thumbnail on the web"}
+            else:
+                word = "Cover" if (platform == "tiktok" or (platform == "facebook" and s == "tall")) else "Thumbnail"
+                thumbnail_info = {"ok": True, "text": f"{word}: {os.path.basename(thumb)}"}
+                if platform == "youtube" and os.path.getsize(thumb) > 2 * 1024 * 1024:
+                    warnings.append(f"YouTube thumbnails must be under 2 MB; {os.path.basename(thumb)} is larger.")
+
             if i:
                 if platform == "youtube" and s == "tall" and i["seconds"] > 180:
                     warnings.append(f"YouTube: the 9:16 video is {clock(i['seconds'])}; over 3:00 it is a normal video, not a Short.")
@@ -166,7 +177,8 @@ def prepare(form, post, work):
                 "badges": [KIND[(platform, s)], VISIBILITY[platform][form.get("visibility", "public")]],
                 "visibility": form.get("visibility", "public"),
                 "meta": meta, "video": v["video"], "srt_file": srt_file, "language": lang,
-                "captions": captions, "fields": fields_for(platform, built, by_claude),
+                "captions": captions, "thumbnail": thumb, "thumbnail_info": thumbnail_info,
+                "fields": fields_for(platform, built, by_claude),
             })
 
     if form.get("visibility") == "unlisted" and any(p["key"] != "youtube" for p in posts):

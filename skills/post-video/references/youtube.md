@@ -13,6 +13,7 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
    - Audience: "made for kids" is required. Choose **No, it's not made for kids** unless the user said otherwise; it is their legal statement, so if the video could be for children, ask.
    - **Show more** → Tags ← `tags`, typed with a comma after each. Video language ← the caption language.
    - Altered or synthetic content question, paid promotion: leave at the default "No" only if the user's text gives no reason to think otherwise; if it mentions AI-made voice or footage or a sponsor, ask.
+   - Thumbnail (when `thumbnail` is not null, 16:9 video only): on the Details step, **Thumbnail → Upload file**, attach the image (under 2 MB). The option is missing on channels without phone verification: skip it and report it. Shorts take no custom thumbnail here.
 3. **Video elements** → **Add subtitles** → pick the language → **Upload file** → **With timing** → attach `srt_file` (skip this step when it is null) → check a few lines appear → **Done**.
    If the subtitles row is greyed out, the video is still processing: finish the upload, then open the video in Studio → **Subtitles** and add them there.
 4. **Checks**: wait. A copyright or ad-suitability issue → stop and tell the user.

@@ -16,7 +16,15 @@ Two rules that hold whatever else happens:
 
 ## 1. Open the form
 
-Always start here, also when the user gave files or platforms in their message. All four platforms are ticked by default; the user unticks what they do not want.
+Always start here. All four platforms are ticked by default; the user unticks what they do not want.
+
+**When the user named a folder or files** (in the command's arguments or in their message), find the files first, so the form opens with the Files screen already filled in. The user still looks at it and submits; never skip the Files screen.
+
+```bash
+python3 "$S/scan.py" "/path/to/folder" --out ~/.video-poster/prefill.json
+```
+
+Give it the folder, or the files one by one. It sorts videos and images into 16:9 and 9:16, matches SRT files, finds the description file, and lists in `hints` what it was unsure about (the form shows them). Then start the form with `--prefill ~/.video-poster/prefill.json`. With no folder or files named, start it empty:
 
 ```bash
 python3 "$S/form.py" start
@@ -39,13 +47,21 @@ Results of `wait submit`: the form (below); `{"waiting": true}` after the timeou
 
 If the user writes in chat while a wait is running ("continue", "I submitted", "it is stuck"), do not start a second form: run `form.py wait submit --timeout 5` (or `wait decision`) in the foreground to read where things stand and go on from there.
 
-The result is the form: `videos.wide` (16:9) and `videos.tall` (9:16), each with `video` and `srt`; `description_file` and/or `description_text`; `platforms` with which video each one gets (`wide`, `tall`, `both`); `visibility`; `language`.
+The result is the form: `videos.wide` (16:9) and `videos.tall` (9:16), each with `video`, `srt` and `thumbnail`; `description_file` and/or `description_text`; `platforms` with which video each one gets (`wide`, `tall`, `both`); `visibility`; `language`.
 
 If the form cannot open (no browser, the command fails), fall back to asking in chat for the same things, then continue from step 2 with a `submit.json` you write yourself.
 
 ## 2. Turn the text into post.json
 
-Read `description_file` and `description_text` (when both are given, the pasted text is the newer word). The text is often not ready: a pasted README with sections per platform, notes with no title, hashtags mixed into sentences, markdown, several languages. Make one clean post from it and write `$W/post.json`:
+First try to read the description file exactly:
+
+```bash
+python3 "$S/parse_post.py" "<description_file>" --out "$W/post.json"
+```
+
+`"structured": true` means the file follows the video-poster structure (the `description-file` skill of this plugin describes it): `post.json` is written from it word for word. Do not rewrite anything; only add its `problems`, if any, to `notes` in `post.json`, and go to step 3. Pasted `description_text` together with a structured file: treat the pasted text as an instruction for what to change in `post.json`.
+
+`"structured": false` means a free-form file: read `description_file` and `description_text` (when both are given, the pasted text is the newer word) and write `post.json` yourself as described below. The text is often not ready: a pasted README with sections per platform, notes with no title, hashtags mixed into sentences, markdown, several languages. Make one clean post from it and write `$W/post.json`:
 
 ```json
 {
@@ -90,9 +106,16 @@ python3 "$S/form.py" wait decision --timeout 3000
 
 Run it in the background like the first wait, and tell the user in one line that the Check screen is ready, with the number of uploads and of notes to check, and the link again. The user edits the text on the page if they want and presses a button.
 
+- `{"action": "refine", "instruction": "...", "file": ".../refine.json"}`: the user wrote on the Check screen what to change. The page shows "Claude is applying your changes…" until you answer. `file` holds the posts as they are on the page now, including what the user typed in the boxes. Edit the `value` of the fields in that file to do what the instruction says, and only that: keep every other value and the user's own edits untouched, keep each value within its `limit`. To add a line for the user ("I shortened the caption to 140 characters"), put it first in `warnings`. Then show it and wait again:
+
+  ```bash
+  python3 "$S/form.py" preview "$W/refine.json"
+  ```
+
+  If the instruction is unclear, or asks for something a text change cannot do (another video, another platform), do not guess: put one line saying so first in `warnings` (for another file or platform: "press Back to change files"), push the file unchanged, and wait again. Refine can happen any number of times; nothing is posted by it.
 - `{"action": "back"}`: they went back to the form. Go to `wait submit` in step 1 and redo steps 2–3.
 - `{"action": "cancel"}`: `form.py stop`, say nothing was posted.
-- `{"action": "post", "posts": [...]}`: the approval. `posts` is the final list, with the user's edits. Upload exactly these: for each one `video`, `fields` (by `key`: `title`, `description`, `tags`, `text`, `caption`), `srt_file` (may be null), `visibility`, `key` (platform), `shape` (`wide` / `tall`), `id`.
+- `{"action": "post", "posts": [...]}`: the approval. `posts` is the final list, with the user's edits. Upload exactly these: for each one `video`, `thumbnail` (may be null), `fields` (by `key`: `title`, `description`, `tags`, `text`, `caption`), `srt_file` (may be null), `visibility`, `key` (platform), `shape` (`wide` / `tall`), `id`.
 
 Where captions go:
 
@@ -137,9 +160,10 @@ How to work on every one of them:
 - Wait for upload and processing to finish before the final button. Long videos take minutes; check, do not guess.
 - A CAPTCHA, a "verify it's you", a copyright or policy warning, or a choice you were not told about (paid promotion, made for kids, AI-content label): stop and ask the user.
 - The user pressed Post on the Check screen, so when the site's page shows exactly the approved text, press the site's final Post/Publish button. If anything differs from what they approved (text was cut by the site, different account or Page, different visibility), stop and ask in chat.
+- **Thumbnail**: when an upload's `thumbnail` is not null, attach it where the site's reference file says (`attach.py split ... --accept image`). If the site does not offer a custom thumbnail for this account or this kind of post, go on without it and report `--note "thumbnail not set"`; never block a post on it.
 - **First comment**: when an upload's `first_comment` field is not empty, add it right after that upload is published: open the new post, write the comment exactly as given, send it, and pin it where the site offers that. It is part of what the user approved. If the post is still processing and comments are not open yet, wait and try once more. If the comment still cannot be added, the upload stays `posted`: report it with `--note "first comment not added"` and give the user the text to paste.
 - A 9:16 upload to YouTube is a Short and to Facebook is a Reel; the reference files say what differs.
 
 ## 6. Report
 
-A short table in chat: upload, result (posted / failed / skipped), link to the post if the site gave one, captions attached or not, first comment added or not. For a failure, say at which step and what the page said; do not retry a publish more than once, a double post is worse than a missing one. The files in `~/.video-poster/current/` stay until the next run, so a failed upload can be redone from `final.json`.
+A short table in chat: upload, result (posted / failed / skipped), link to the post if the site gave one, captions attached or not, thumbnail set or not, first comment added or not. For a failure, say at which step and what the page said; do not retry a publish more than once, a double post is worse than a missing one. The files in `~/.video-poster/current/` stay until the next run, so a failed upload can be redone from `final.json`.

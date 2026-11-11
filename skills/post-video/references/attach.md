@@ -2,7 +2,7 @@
 
 The browser tool's `file_upload` takes only files inside the session's folders and at most 10 MB per call. Videos are bigger and usually live elsewhere, so never call `file_upload` on the video directly, and do not click a site's "Select files" button (it opens a system dialog you cannot use). Use `attach.py`: it cuts the file into parts inside the session folder, and the page joins them back into the same file, checked by size and SHA-256.
 
-Use it for every file you attach: videos and SRT files alike.
+Use it for every file you attach: videos, SRT files and thumbnails alike.
 
 ## Steps
 
@@ -13,7 +13,7 @@ Use it for every file you attach: videos and SRT files alike.
    python3 "$S/attach.py" split "/path/to/video.mp4" --accept video
    ```
 
-   `--accept srt` for a caption file. It prints JSON: `parts` (paths, in order), `setup_js`, `finish_js`, `cleanup_js`. A `warning` means the file is very large (over about 480 MB): ask the user to drag it into the page instead.
+   `--accept srt` for a caption file, `--accept image` for a thumbnail. It prints JSON: `parts` (paths, in order), `setup_js`, `finish_js`, `cleanup_js`. A `warning` means the file is very large (over about 480 MB): ask the user to drag it into the page instead.
 3. Run `setup_js` in the tab with `javascript_tool`. It adds a small file input at the top left of the page, labelled "video poster part input".
 4. `find` that input ("video poster part input") to get its ref, then call `file_upload` once per part with that ref, one part per call. All parts must go to this input, none to the site's own input.
 5. Run `finish_js` in the tab. It joins the parts, verifies them, gives the file to the site's file input and fires the events the site listens for. Read the result:
