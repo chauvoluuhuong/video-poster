@@ -10,6 +10,7 @@ The user picks videos, SRT files and a description on a local page, checks every
 | Prepare | `skills/post-video/scripts/prepare.py` | Form + `post.json` → one entry per upload, with warnings |
 | Text builder | `skills/post-video/scripts/build_post.py` | Per-platform limits, hashtags, YouTube tags, per-variant overrides |
 | SRT cleaner | `skills/post-video/scripts/check_srt.py` | UTF-8, numbering, time format, order; Facebook's `name.<locale>.srt` copy |
+| Attach helper | `skills/post-video/scripts/attach.py`, `references/attach.md` | Gets a file of any size into a site's file input: parts under 10 MB go through the browser tool, the page joins and verifies them (SHA-256) |
 | Site steps | `skills/post-video/references/*.md` | Where to click on each platform's upload page |
 
 How they talk:
@@ -38,12 +39,16 @@ Dropping a file on the page: a browser tells a page only the file's name, size a
 - The server accepts requests only with its token and a local Host header, and re-checks length limits on Post.
 
 ## Tests and evidence
-- Unit: `tests/test_text.py`. End to end (real server and CLI over HTTP): `tests/test_form_e2e.py`. How to run: [harness](../harness/README.md).
+- Unit: `tests/test_text.py`, `tests/test_attach.py`. End to end (real server and CLI over HTTP): `tests/test_form_e2e.py`. How to run: [harness](../harness/README.md).
 
 ## First comment
 `post.json` → `first_comment` (per-platform overrides allowed) becomes an optional field on every upload. After an upload is published Claude adds it as a comment and pins it where possible; a failed comment does not fail the upload.
 
+## Attaching files
+The browser tool's own file attach takes at most 10 MB per call and only files in the session's folders. `attach.py split` writes parts of 8 MB into `.video-poster-parts/` in the session folder; a temporary file input on the page collects them; `finish_js` builds one `File`, checks size and SHA-256, and sets it on the site's input (or drops it on a drop zone). No network request leaves the page, so a site's content security policy does not block it. Checked by hand on 2026-11-11 with a 21 MB video on a tiktok.com page.
+
 ## Known limits
+- Attaching was proven on a page with a plain file input; each site's real upload input is still unproven.
 - The uploads in Chrome are not tested automatically.
 - TikTok's web upload takes no SRT; Facebook Reels often offer only auto captions.
 - Native file picker on macOS only.
