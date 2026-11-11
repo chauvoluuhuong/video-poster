@@ -23,7 +23,8 @@ ARROW = re.compile(TIME + r"\s*-+>\s*" + TIME)
 
 
 def read_text(path):
-    raw = open(path, "rb").read()
+    with open(path, "rb") as f:
+        raw = f.read()
     for enc in ("utf-8-sig", "utf-16", "cp1258", "cp1252"):
         try:
             return raw.decode(enc), enc
@@ -63,29 +64,24 @@ def parse(text):
     return cues
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("srt")
-    ap.add_argument("--out")
-    ap.add_argument("--facebook-locale")
-    ap.add_argument("--video")
-    a = ap.parse_args()
-
-    text, enc = read_text(a.srt)
+def clean(srt, out=None, facebook_locale=None, video=None):
+    """Write a clean copy of `srt`. Returns the summary dict (ok False when nothing could be read)."""
+    text, enc = read_text(srt)
     cues = parse(text)
     problems, fixed = [], []
-    if enc != "utf-8-sig":
-        fixed.append(f"encoding {enc} -> utf-8")
-    elif text != text.lstrip("﻿") or open(a.srt, "rb").read(3) == b"\xef\xbb\xbf":
+    with open(srt, "rb") as f:
+        bom = f.read(3) == b"\xef\xbb\xbf"
+    if bom:
         fixed.append("removed BOM")
+    elif enc != "utf-8-sig":
+        fixed.append(f"encoding {enc} -> utf-8")
 
     empty = [c for c in cues if not any(l.strip() for l in c["lines"])]
     if empty:
         fixed.append(f"removed {len(empty)} empty cues")
     cues = [c for c in cues if c not in empty]
     if not cues:
-        print(json.dumps({"ok": False, "error": "no captions found; is this an SRT file?"}))
-        sys.exit(1)
+        return {"ok": False, "error": "no captions found; is this an SRT file?"}
 
     if cues != sorted(cues, key=lambda c: c["start"]):
         cues.sort(key=lambda c: c["start"])
@@ -96,7 +92,7 @@ def main():
         if i < len(cues) and c["end"] > cues[i]["start"]:
             problems.append(f"cue {i} overlaps cue {i + 1} ({stamp(c['start'])})")
 
-    out = a.out or os.path.splitext(a.srt)[0] + ".clean.srt"
+    out = out or os.path.splitext(srt)[0] + ".clean.srt"
     body = "\n\n".join(
         f"{i}\n{stamp(c['start'])} --> {stamp(c['end'])}\n" + "\n".join(c["lines"])
         for i, c in enumerate(cues, 1)
@@ -107,21 +103,35 @@ def main():
     res = {
         "ok": True,
         "cues": len(cues),
+        "ends_ms": max(c["end"] for c in cues),
         "ends_at": stamp(max(c["end"] for c in cues)),
         "clean_file": os.path.abspath(out),
         "fixed": fixed,
         "problems": problems[:20],
     }
-    if a.facebook_locale:
-        if not re.fullmatch(r"[a-z]{2,3}_[A-Z]{2}", a.facebook_locale):
+    if facebook_locale:
+        if not re.fullmatch(r"[a-z]{2,3}_[A-Z]{2}", facebook_locale):
             res["problems"].append("facebook locale must look like vi_VN or en_US")
         else:
-            stem = os.path.splitext(os.path.basename(a.video or a.srt))[0]
-            fb = os.path.join(os.path.dirname(os.path.abspath(out)), f"{stem}.{a.facebook_locale}.srt")
+            stem = os.path.splitext(os.path.basename(video or srt))[0]
+            fb = os.path.join(os.path.dirname(os.path.abspath(out)), f"{stem}.{facebook_locale}.srt")
             if os.path.abspath(fb) != os.path.abspath(out):
                 shutil.copyfile(out, fb)
             res["facebook_file"] = fb
+    return res
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("srt")
+    ap.add_argument("--out")
+    ap.add_argument("--facebook-locale")
+    ap.add_argument("--video")
+    a = ap.parse_args()
+    res = clean(a.srt, a.out, a.facebook_locale, a.video)
     print(json.dumps(res, ensure_ascii=False, indent=2))
+    if not res["ok"]:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

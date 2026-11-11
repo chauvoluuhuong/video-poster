@@ -2,15 +2,14 @@
 
 Start: `https://www.tiktok.com/tiktokstudio/upload`.
 
-Fields from `post.ready.json` → `platforms.tiktok`:
+Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 
 1. **Select video** → attach the video. Wait until the preview and the form appear.
 2. Description ← `caption`. The box is pre-filled with the file name: select all and replace it. It is a rich editor: after each `#tag` a suggestion list opens; press Escape or pick the exact tag, then check the caption reads the same as `caption`. Line breaks may be lost; if they are, type the text line by line with Enter between.
 3. Cover: leave the default unless the user gave one.
 4. Who can watch: **Everyone** unless told otherwise. Leave comment, duet and stitch at their defaults.
-5. Captions: there is no SRT upload here.
-   - If the page offers auto captions and the user chose that, turn it on.
-   - If the user chose burned-in captions, the video you attached in step 1 must already be the burned copy:
+5. Captions: there is no SRT upload here. If the page offers auto captions, turn them on.
+   - Only if the user asked in chat for burned-in captions, the video you attach in step 1 must be a burned copy:
      `ffmpeg -i video.mp4 -vf "subtitles=captions.clean.srt:force_style='FontSize=14,Outline=2,MarginV=60'" -c:a copy video.captioned.mp4`
      (needs an ffmpeg built with libass; show one frame to the user before uploading).
 6. "AI-generated content" switch, "Disclose post content" (brand or paid): leave off unless the user's text says the video is AI-made or sponsored; then ask.

@@ -1,40 +1,60 @@
 # video-poster
 
-A Claude Code plugin that posts one video to YouTube, Facebook, TikTok and LinkedIn from your own Chrome, with a description, tags and an SRT caption file.
+A Claude Code plugin that posts one video to YouTube, Facebook, TikTok and LinkedIn from your own Chrome, with a description, tags and SRT captions. No API keys.
 
-## What it does
+## How it works
 
-1. Takes your video, your text in any shape (notes, a README, hashtags mixed in) and an SRT file.
-2. Turns the text into one clean post, then into the exact text each platform accepts (length limits, hashtags, YouTube tags).
-3. Cleans the SRT (UTF-8, numbering, time format) and makes the specially named copy Facebook needs.
-4. Shows you the final text per platform and waits for your yes.
-5. Uploads through the upload pages in your Chrome and reports the links.
+1. Run `/video-poster:post-video`. A form opens in your browser with all four platforms ticked.
+2. Choose a 16:9 video and/or a 9:16 video, an SRT for each, and a description file (or paste the text). The text can be messy: notes, a README, hashtags mixed in.
+3. Press **Check the posts**. Claude turns your text into one clean post, fits it to each platform's limits, cleans the SRT, and shows every upload on the same page. Edit anything.
+4. Press **Post**. Only then does Claude upload, through the upload pages in the Chrome where you are logged in. The page shows progress and the links.
 
-## Needs
-
-- The Claude in Chrome extension, connected, and you logged in to each platform in that Chrome.
-- `python3`. `ffprobe` / `ffmpeg` are optional (video checks, burned-in captions for TikTok).
+| Platform | Default video | SRT captions |
+|---|---|---|
+| YouTube | 16:9 as a video and 9:16 as a Short | uploaded |
+| Facebook | 16:9 (9:16 as a Reel if you choose it) | uploaded, renamed to `name.vi_VN.srt` |
+| TikTok | 9:16 | no upload on the web; TikTok's auto captions are turned on |
+| LinkedIn | 16:9 | uploaded |
 
 ## Install
 
 ```bash
-claude plugin marketplace add /path/to/video-poster
+claude plugin marketplace add chauvoluuhuong/video-poster
 ```
 
 ```bash
-claude plugin install video-poster@video-poster-local
+claude plugin install video-poster@video-poster
 ```
 
-## Use
+Update later with `claude plugin marketplace update video-poster`.
 
+Needs: the Claude in Chrome extension, connected, with you logged in to each platform; `python3`. `ffprobe` is optional (video length and size on the check screen). The file picker is macOS only; elsewhere, paste the path.
+
+## Status
+
+The form, the check screen, the text and SRT clean-up are covered by automatic tests. The uploads themselves are driven by written steps per site (`skills/post-video/references/`) and are **not tested automatically**: the sites change, so the first post on each platform may need a correction. Please open an issue with what the page showed.
+
+Not included: platform APIs, scheduling, thumbnails, Instagram.
+
+## Contributing
+
+### Set up
+```bash
+git clone https://github.com/chauvoluuhuong/video-poster && cd video-poster
+./scripts/ci.sh   # unit + form end-to-end tests, see docs/harness/README.md
 ```
-/video-poster:post-video ~/Videos/demo.mp4 to youtube and tiktok, captions demo.srt
-<paste your description and tags, in any format>
-```
 
-Or just say "post this video to YouTube and LinkedIn" and give the files.
+### Git flow
+- Branch from `dev`: `feature/<name>` for features, `fix/<name>` for bugs.
+- Open a PR into `dev` with a short "what / tested" summary; CI must pass.
+- Maintainers merge `dev → main` and tag the release `vX.Y.Z`. Installed plugins update from `main`.
+- Found a bug? Open an issue with steps to reproduce and evidence (what the upload page showed, logs).
 
-## Limits
+### Working with an AI agent
+Point your agent at [docs/map.md](docs/map.md) before it changes anything. Example prompts:
+- "Read docs/map.md, then explain how the form and the check screen work and which files implement them."
+- "Read docs/features/post-video.md. The YouTube upload page changed: update skills/post-video/references/youtube.md to match what I describe."
+- "Fix issue #<n>: reproduce it, add a regression test, run ./scripts/ci.sh, and open a PR into dev."
 
-- TikTok's web upload has no SRT upload: the plugin offers TikTok's auto captions or burning the SRT into a copy of the video.
-- The upload pages change. The steps in `skills/post-video/references/` describe fields, not selectors, so small changes are handled; a redesign may need those files updated.
+### License
+MIT — see [LICENSE](LICENSE).
