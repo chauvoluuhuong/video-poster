@@ -11,6 +11,9 @@ The user picks videos, SRT files and a description on a local page, checks every
 | Text builder | `skills/post-video/scripts/build_post.py` | Per-platform limits, hashtags, YouTube tags, per-variant overrides |
 | SRT cleaner | `skills/post-video/scripts/check_srt.py` | UTF-8, numbering, time format, order; Facebook's `name.<locale>.srt` copy |
 | Attach helper | `skills/post-video/scripts/attach.py`, `references/attach.md` | Gets a file of any size into a site's file input: parts under 10 MB go through the browser tool, the page joins and verifies them (SHA-256) |
+| Folder scan | `skills/post-video/scripts/scan.py` | Finds videos (by shape), SRT, thumbnails and the description file in a folder → `prefill.json` for `form.py start --prefill`; unsure choices become hints on the form |
+| Structure parser | `skills/post-video/scripts/parse_post.py` | Reads a description file in the documented structure into `post.json` word for word |
+| Structure spec | `skills/description-file/SKILL.md` | The structure, written for AIs that generate the file; its example and heading list are parsed in the tests |
 | Site steps | `skills/post-video/references/*.md` | Where to click on each platform's upload page |
 
 How they talk:
@@ -39,7 +42,13 @@ Dropping a file on the page: a browser tells a page only the file's name, size a
 - The server accepts requests only with its token and a local Host header, and re-checks length limits on Post.
 
 ## Tests and evidence
-- Unit: `tests/test_text.py`, `tests/test_attach.py`. End to end (real server and CLI over HTTP): `tests/test_form_e2e.py`. How to run: [harness](../harness/README.md).
+- Unit: `tests/test_text.py`, `tests/test_attach.py`, `tests/test_structure.py`. End to end (real server and CLI over HTTP): `tests/test_form_e2e.py`. How to run: [harness](../harness/README.md).
+
+## Refine on the Check screen
+The user writes an instruction and presses Apply with Claude. The server saves the posts as they are on the page (with the user's own edits) to `refine.json`, switches the page to "applying", and `wait decision` returns `{action: refine, instruction, file}`. Claude changes field values in that file and pushes it back with `form.py preview`. Nothing is posted by a refine; Post still re-checks the limits.
+
+## Thumbnails
+`videos.<shape>.thumbnail` on the form → `thumbnail` on each upload. YouTube Shorts take none on the web (shown as skipped). A missing thumbnail option on a site never blocks the post.
 
 ## First comment
 `post.json` → `first_comment` (per-platform overrides allowed) becomes an optional field on every upload. After an upload is published Claude adds it as a comment and pins it where possible; a failed comment does not fail the upload.

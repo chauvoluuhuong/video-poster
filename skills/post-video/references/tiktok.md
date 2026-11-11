@@ -6,7 +6,7 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 
 1. **Select video** → attach the video. Wait until the preview and the form appear.
 2. Description ← `caption`. The box is pre-filled with the file name: select all and replace it. It is a rich editor: after each `#tag` a suggestion list opens; press Escape or pick the exact tag, then check the caption reads the same as `caption`. Line breaks may be lost; if they are, type the text line by line with Enter between.
-3. Cover: leave the default unless the user gave one.
+3. Cover: when `thumbnail` is not null, **Edit cover** → **Upload cover** → attach the image → confirm. If only frame selection is offered, leave the default and report it. Otherwise leave the default.
 4. Who can watch: **Everyone** unless told otherwise. Leave comment, duet and stitch at their defaults.
 5. Captions: there is no SRT upload here. If the page offers auto captions, turn them on.
    - Only if the user asked in chat for burned-in captions, the video you attach in step 1 must be a burned copy:

@@ -5,4 +5,5 @@ cd "$(dirname "$0")/.."
 python3 -c "import json; [json.load(open(f)) for f in ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json')]"
 python3 -m py_compile skills/post-video/scripts/*.py
 grep -q '^name: post-video$' skills/post-video/SKILL.md
+grep -q '^name: description-file$' skills/description-file/SKILL.md
 python3 -m unittest discover -s tests -v

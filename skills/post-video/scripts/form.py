@@ -3,10 +3,13 @@
 
 Claude drives it with these commands (all take --state DIR, default ~/.video-poster/current):
 
-  form.py start [--no-open]        start the server, open the page, print {"url": ...}
+  form.py start [--no-open] [--prefill prefill.json]
+                                   start the server, open the page, print {"url": ...};
+                                   --prefill opens the Files screen already filled in (see scan.py)
   form.py wait submit              block until the user submits the form; prints the form as JSON
   form.py preview preview.json     show the prepared posts on the page (phase: preview)
-  form.py wait decision            block until Post / Back / Cancel; Post prints the final posts
+  form.py wait decision            block until Post / Refine / Back / Cancel; Post prints the final posts,
+                                   Refine prints the user's instruction and the file to edit
   form.py progress ID STATUS [--link URL] [--note TEXT]   update one upload on the posting screen
   form.py done                     mark the run finished
   form.py url                      print the page's link again
@@ -18,6 +21,7 @@ Files in the state dir: server.json, submit.json, preview.json, final.json.
 The server listens on 127.0.0.1 only and every request needs the one-time token from the URL.
 """
 import argparse
+import base64
 import json
 import os
 import secrets
@@ -72,8 +76,9 @@ def pick_file(kind):
         return {"path": path} if path else {"cancelled": True}
     if sys.platform != "darwin":
         return {"unsupported": True}
-    prompt = {"video": "Choose the video", "srt": "Choose the SRT caption file", "text": "Choose the description file"}[kind]
-    of_type = ' of type {"public.movie"}' if kind == "video" else ""
+    prompt = {"video": "Choose the video", "srt": "Choose the SRT caption file", "text": "Choose the description file",
+              "image": "Choose the thumbnail image"}[kind]
+    of_type = {"video": ' of type {"public.movie"}', "image": ' of type {"public.image"}'}.get(kind, "")
     script = (
         "tell application (path to frontmost application as text) to "
         f'POSIX path of (choose file with prompt "{prompt}"{of_type})'
@@ -139,6 +144,7 @@ def validate_form(form):
     for shape in ("wide", "tall"):
         slot = (form.get("videos") or {}).get(shape) or {}
         video, srt = expand(slot.get("video", "")), expand(slot.get("srt", ""))
+        thumb = expand(slot.get("thumbnail", ""))
         name = "16:9" if shape == "wide" else "9:16"
         if video and not os.path.isfile(video):
             errors.append(f"{name} video not found: {video}")
@@ -146,7 +152,11 @@ def validate_form(form):
             errors.append(f"{name} SRT not found: {srt}")
         if srt and not video:
             errors.append(f"{name} has an SRT but no video")
-        clean["videos"][shape] = {"video": video, "srt": srt}
+        if thumb and not os.path.isfile(thumb):
+            errors.append(f"{name} thumbnail not found: {thumb}")
+        if thumb and not video:
+            errors.append(f"{name} has a thumbnail but no video")
+        clean["videos"][shape] = {"video": video, "srt": srt, "thumbnail": thumb}
     if not any(v["video"] for v in clean["videos"].values()):
         errors.append("Choose at least one video")
 
@@ -177,6 +187,10 @@ class State:
         self.dir, self.token = state_dir, token
         self.phase = "form"  # form | preparing | preview | posting | done | cancelled
         self.form = read_json(os.path.join(HOME_DIR, "last_form.json"), {})
+        prefill = read_json(self.path("prefill.json"), {})
+        self.hints = prefill.pop("hints", [])
+        self.form.update(prefill)  # files found for the user; they still check and submit the form
+        self.note = ""
         self.preview = None
         self.progress = {}
         self.rev = 0
@@ -185,7 +199,8 @@ class State:
         return os.path.join(self.dir, name)
 
     def public(self):
-        return {"phase": self.phase, "form": self.form, "preview": self.preview, "progress": self.progress, "rev": self.rev}
+        return {"phase": self.phase, "form": self.form, "preview": self.preview, "progress": self.progress,
+                "rev": self.rev, "hints": self.hints, "note": self.note}
 
     def drop(self, *names):
         for n in names:
@@ -259,7 +274,7 @@ def make_handler(st):
 
             if route == "/api/pick":
                 kind = body.get("kind")
-                if kind not in ("video", "srt", "text"):
+                if kind not in ("video", "srt", "text", "image"):
                     return self.send(400, {"error": "bad kind"})
                 return self.send(200, pick_file(kind))
 
@@ -272,20 +287,23 @@ def make_handler(st):
 
             if route == "/api/drop":  # a small dropped file (SRT, text) that could not be located: keep a copy
                 name = os.path.basename(body.get("name") or "")
-                text = body.get("text")
-                if not name or not isinstance(text, str) or len(text.encode()) > SMALL:
+                try:  # text for SRT and description files, base64 for images
+                    data = base64.b64decode(body["b64"], validate=True) if "b64" in body else body["text"].encode("utf-8")
+                except (KeyError, AttributeError, ValueError):
+                    return self.send(400, {"error": "bad file"})
+                if not name or len(data) > SMALL * (4 if "b64" in body else 1):
                     return self.send(400, {"error": "bad file"})
                 folder = st.path("dropped")
                 os.makedirs(folder, exist_ok=True)
-                with open(os.path.join(folder, name), "w", encoding="utf-8", newline="") as f:
-                    f.write(text)
+                with open(os.path.join(folder, name), "wb") as f:
+                    f.write(data)
                 return self.send(200, {"path": os.path.join(folder, name), "copied": True})
 
             if route == "/api/submit":
                 form, errors = validate_form(body)
                 if errors:
                     return self.send(400, {"errors": errors})
-                st.form, st.phase, st.preview, st.progress = form, "preparing", None, {}
+                st.form, st.phase, st.preview, st.progress, st.note = form, "preparing", None, {}, ""
                 st.drop("preview.json", "final.json", "decision.json")
                 write_json(st.path("submit.json"), form)
                 os.makedirs(HOME_DIR, exist_ok=True)
@@ -308,6 +326,17 @@ def make_handler(st):
                     st.phase = "form"
                     st.drop("submit.json", "preview.json")
                     write_json(st.path("decision.json"), {"action": "back"})
+                    return self.send(200, {"ok": True})
+                if action == "refine" and st.phase == "preview" and st.preview:
+                    instruction = str(body.get("instruction") or "").strip()
+                    if not instruction:
+                        return self.send(400, {"errors": ["Write what Claude should change"]})
+                    posts, _ = merge_decision(st.preview, body.get("posts"))  # keep what the user typed so far
+                    st.preview = dict(st.preview, posts=posts)
+                    write_json(st.path("refine.json"), st.preview)
+                    st.phase, st.note = "preparing", "Claude is applying your changes…"
+                    write_json(st.path("decision.json"), {"action": "refine", "instruction": instruction,
+                                                           "file": st.path("refine.json")})
                     return self.send(200, {"ok": True})
                 if action == "post" and st.phase == "preview" and st.preview:
                     posts, errors = merge_decision(st.preview, body.get("posts"))
@@ -376,8 +405,13 @@ def cmd_start(a):
             os.kill(old["pid"], 15)
         except (OSError, KeyError):
             pass
+    prefill = read_json(a.prefill) if a.prefill else None
+    if a.prefill and prefill is None:
+        sys.exit(json.dumps({"error": f"cannot read {a.prefill}"}))
     shutil.rmtree(a.state, ignore_errors=True)
     os.makedirs(a.state, exist_ok=True)
+    if prefill:
+        write_json(os.path.join(a.state, "prefill.json"), prefill)
     subprocess.Popen([sys.executable, os.path.abspath(__file__), "serve", "--state", a.state],
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                      start_new_session=True)
@@ -424,7 +458,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--state", default=os.path.join(HOME_DIR, "current"))
     sub = ap.add_subparsers(dest="cmd", required=True)
-    s = sub.add_parser("start"); s.add_argument("--no-open", action="store_true")
+    s = sub.add_parser("start"); s.add_argument("--no-open", action="store_true"); s.add_argument("--prefill")
     sub.add_parser("serve")
     s = sub.add_parser("wait"); s.add_argument("what", choices=("submit", "decision")); s.add_argument("--timeout", type=float, default=540)
     s = sub.add_parser("preview"); s.add_argument("file")

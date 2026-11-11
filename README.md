@@ -4,17 +4,17 @@ A Claude Code plugin that posts one video to YouTube, Facebook, TikTok and Linke
 
 ## How it works
 
-1. Run `/video-poster:post-video`. A form opens in your browser with all four platforms ticked.
-2. Drag in or choose a 16:9 video and/or a 9:16 video, an SRT for each, and a description file (or paste the text). The text can be messy: notes, a README, hashtags mixed in.
-3. Press **Check the posts**. Claude turns your text into one clean post, fits it to each platform's limits, cleans the SRT, and shows every upload on the same page. Edit anything.
+1. Run `/video-poster:post-video`. A form opens in your browser with all four platforms ticked. Name a folder or files (`/video-poster:post-video ~/Videos/demo`) and the form opens already filled in.
+2. Drag in or choose a 16:9 video and/or a 9:16 video, an SRT and a thumbnail for each, and a description file (or paste the text). The text can be messy: notes, a README, hashtags mixed in.
+3. Press **Check the posts**. Claude turns your text into one clean post, fits it to each platform's limits, cleans the SRT, and shows every upload on the same page. Edit anything, or write what Claude should change ("make the TikTok caption shorter") and press **Apply with Claude**.
 4. Press **Post**. Only then does Claude upload, through the upload pages in the Chrome where you are logged in. The page shows progress and the links.
 
-| Platform | Default video | SRT captions |
-|---|---|---|
-| YouTube | 16:9 as a video and 9:16 as a Short | uploaded |
-| Facebook | 16:9 (9:16 as a Reel if you choose it) | uploaded, renamed to `name.vi_VN.srt` |
-| TikTok | 9:16 | no upload on the web; TikTok's auto captions are turned on |
-| LinkedIn | 16:9 | uploaded |
+| Platform | Default video | SRT captions | Thumbnail |
+|---|---|---|---|
+| YouTube | 16:9 as a video and 9:16 as a Short | uploaded (not for Shorts) |
+| Facebook | 16:9 (9:16 as a Reel if you choose it) | uploaded, renamed to `name.vi_VN.srt` | uploaded |
+| TikTok | 9:16 | no upload on the web; TikTok's auto captions are turned on | uploaded as cover |
+| LinkedIn | 16:9 | uploaded | uploaded |
 
 ## Install
 
@@ -36,7 +36,11 @@ The form, the check screen, the text and SRT clean-up are covered by automatic t
 
 Each upload can also get a **first comment** (for example the download link), added and pinned where the site allows right after the video is posted.
 
-Not included: platform APIs, scheduling, thumbnails, Instagram.
+## The description file
+
+Any text works, but a file in the plugin's own structure is read exactly, with no rewriting. The structure is a skill of this plugin, written for AI tools: ask your AI to "write the description file for this video in the video-poster structure" (skill `video-poster:description-file`, source: [skills/description-file/SKILL.md](skills/description-file/SKILL.md)). Such a file can also name the videos, SRT files and thumbnails, so a folder with it needs no choosing at all.
+
+Not included: platform APIs, scheduling, Instagram.
 
 ## Contributing
 
