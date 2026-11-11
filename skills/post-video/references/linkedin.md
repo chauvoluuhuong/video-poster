@@ -6,10 +6,10 @@ Start
 - As themselves: `https://www.linkedin.com/feed/` → **Start a post** → the video / media button.
 - As a company page: open the page's admin view (`https://www.linkedin.com/company/<name>/admin/`) → **Create** → **Start a post**, or in the post dialog use the author picker at the top to switch to the page.
 
-Fields from `post.ready.json` → `platforms.linkedin`:
+Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 
 1. Attach the video in the media step.
-2. In the same media editor, before pressing **Next**: **Captions** (a "CC" or "Add captions" control) → attach the clean SRT. Title, if offered ← `video_title`. If there is no captions control, look for **Edit** on the video thumbnail after it is attached; if it is still not there, say so and ask whether to post without captions.
+2. In the same media editor, before pressing **Next**: **Captions** (a "CC" or "Add captions" control) → attach `srt_file` (skip when it is null). Leave the video title field, if there is one, as it is. If there is no captions control, look for **Edit** on the video thumbnail after it is attached; if it is still not there, say so and ask whether to post without captions.
 3. **Next** → post text ← `text` (3000 characters at most, hashtags at the end). After typing a `#tag` a suggestion list may open: press Escape, then check the text reads the same as `text`.
 4. Audience: **Anyone** unless told otherwise.
 5. Final button: **Post** (or the clock icon to schedule). Press only with the user's yes.
