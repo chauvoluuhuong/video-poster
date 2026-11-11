@@ -122,7 +122,7 @@ def build(post, platform, variant=None):
         }
     if platform == "tiktok":
         # No title field: the first line is the hook.
-        body = title if desc.startswith(title) or not desc else f"{title}\n\n{desc}"
+        body = f"{title}\n\n{desc}" if desc and not desc.startswith(title) else (desc or title)
         return {"caption": with_hashtags(body, tags_h, lim["text"], w, "TikTok caption"), "warnings": w}
     # facebook, linkedin: one text box
     body = f"{title}\n\n{desc}" if desc and not desc.startswith(title) else (desc or title)

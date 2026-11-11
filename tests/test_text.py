@@ -35,6 +35,11 @@ class BuildPost(unittest.TestCase):
         self.assertNotIn("Dòng 1", t["caption"])
         self.assertEqual(t["caption"].count("#"), 5)
 
+    def test_description_that_starts_with_title_is_kept(self):
+        post = {"title": "Hook.", "description": "Hook. And the rest of the text.", "tags": ["a"]}
+        for platform, key in (("tiktok", "caption"), ("linkedin", "text"), ("facebook", "text")):
+            self.assertEqual(build_post.build(post, platform)[key], "Hook. And the rest of the text.\n\n#a")
+
     def test_limits(self):
         long = {"title": "t", "description": "word " * 1200, "tags": ["a"]}
         for platform, key in (("tiktok", "caption"), ("linkedin", "text")):
