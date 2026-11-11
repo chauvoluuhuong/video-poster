@@ -9,9 +9,11 @@ post.json (written by Claude from whatever the user gave):
   "description": "...",           # required, plain text, \n for new lines
   "tags": ["ai agent", "..."],    # plain words, no '#'
   "language": "vi",               # caption language, e.g. vi, en
-  "overrides": {                  # optional, per platform
-    "tiktok": {"description": "shorter text", "tags": ["..."]}
-  }
+  "overrides": {                  # optional, per platform: youtube, youtube_short,
+    "tiktok": {"description": "shorter text", "tags": ["..."]}   # facebook, facebook_reel, tiktok, linkedin
+  },
+  "written_by_claude": ["title", "tags"],   # optional: parts the user did not give
+  "notes": ["..."]                          # optional: things the user should check
 }
 
 Prints the result as JSON: per platform the fields to type in, plus warnings.
@@ -96,9 +98,11 @@ def youtube_tags(tags, limit, warnings):
     return kept
 
 
-def build(post, platform):
+def build(post, platform, variant=None):
+    """Text for one upload. `variant` (youtube_short, facebook_reel) may have its own overrides."""
     w = []
-    o = (post.get("overrides") or {}).get(platform, {})
+    ov = post.get("overrides") or {}
+    o = dict(ov.get(platform, {}), **ov.get(variant or "", {}))
     title = clean_text(o.get("title", post.get("title", "")))
     desc = clean_text(o.get("description", post.get("description", "")))
     tags = clean_tags(o.get("tags", post.get("tags", [])))

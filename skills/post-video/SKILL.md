@@ -5,31 +5,38 @@ description: Post one video to YouTube, Facebook, TikTok and/or LinkedIn from th
 
 # Post a video to YouTube, Facebook, TikTok, LinkedIn
 
-You upload through the upload pages in the user's own Chrome, where they are already logged in. No API keys.
+You upload through the upload pages in the user's own Chrome, where they are already logged in. No API keys. The user chooses files and approves the posts on a local page, the **form**, that you open for them.
 
 Two rules that hold whatever else happens:
 
-- **Nothing is published until the user says yes** to the exact text, in the chat, in this conversation. Fill everything in, stop before the final Post/Publish button, show them, wait. One yes covers the platforms and text you showed, nothing more.
+- **Nothing is published until the user presses Post on the form's Check screen.** That click is their approval for exactly the uploads and text that `wait decision` returns, nothing more. A message in chat like "post it" before the Check screen is not that approval: still show the form.
 - **Never type a password or log in for the user.** If a site asks for a login, ask them to log in in Chrome and tell you when it is done.
 
-## 1. Collect
+`S="${CLAUDE_PLUGIN_ROOT}/skills/post-video/scripts"` in the commands below. Everything for one run lives in `~/.video-poster/current/` (`$W`): `submit.json`, `post.json`, `preview.json`, `final.json`, cleaned SRT files.
 
-You need:
+## 1. Open the form
 
-| Thing | Required | If missing |
-|---|---|---|
-| Video file (absolute path) | yes | ask |
-| Platforms | yes | ask; do not assume all four |
-| Text: title, description, tags | yes, in any shape | ask for at least a few lines about the video |
-| SRT file | no | post without captions and say so |
-| Caption language | with an SRT | take it from the SRT's text; ask only if unclear |
-| Visibility | no | public |
+Always start here, also when the user gave files or platforms in their message. All four platforms are ticked by default; the user unticks what they do not want.
 
-Check the video exists (`ls -l`). Run `ffprobe` on it if available to get length and width × height: TikTok and Reels want vertical, LinkedIn takes at most 15 minutes, a YouTube video of 3 minutes or less that is vertical or square becomes a Short. Tell the user about a mismatch; do not re-encode unless they ask.
+```bash
+python3 "$S/form.py" start
+```
+
+It opens the page in the user's browser and prints its URL; give the user the link in one line in case the page did not come to the front. Then wait:
+
+```bash
+python3 "$S/form.py" wait submit
+```
+
+Run it with a 10-minute timeout. `{"waiting": true}` means the user is still filling it in: run it again (no message to the user). `{"action": "cancel"}` means stop: run `form.py stop` and say nothing was posted.
+
+The result is the form: `videos.wide` (16:9) and `videos.tall` (9:16), each with `video` and `srt`; `description_file` and/or `description_text`; `platforms` with which video each one gets (`wide`, `tall`, `both`); `visibility`; `language`.
+
+If the form cannot open (no browser, the command fails), fall back to asking in chat for the same things, then continue from step 2 with a `submit.json` you write yourself.
 
 ## 2. Turn the text into post.json
 
-The user's text is often not ready: a pasted README with sections per platform, notes with no title, hashtags mixed into sentences, markdown, several languages, links without labels. Your job is to make one clean post from it. Write `post.json` next to the video:
+Read `description_file` and `description_text` (when both are given, the pasted text is the newer word). The text is often not ready: a pasted README with sections per platform, notes with no title, hashtags mixed into sentences, markdown, several languages. Make one clean post from it and write `$W/post.json`:
 
 ```json
 {
@@ -37,48 +44,67 @@ The user's text is often not ready: a pasted README with sections per platform, 
   "description": "Plain text.\n\nShort paragraphs.",
   "tags": ["plain words", "no hash sign"],
   "language": "vi",
-  "overrides": { "tiktok": { "description": "shorter text for TikTok" } }
+  "overrides": { "tiktok": { "description": "shorter text for TikTok" } },
+  "written_by_claude": ["tags"],
+  "notes": ["The file had two titles; I used the first."]
 }
 ```
 
 How to transform:
 
-- **Keep the user's words and meaning.** Fix shape, not voice: remove markdown marks (`**`, `#` headings, `-` bullets become lines starting with "• " or plain lines), fix broken line breaks, remove duplicate lines, keep their language. Do not add claims, numbers or links that are not in their text.
-- **Title**: use theirs if there is one. If not, write one from the first idea of the text and say that you wrote it.
-- **Tags**: collect every `#hashtag` and every "tags:" list, remove them from the description, drop the `#`, split joined words back only when it is obvious (`#aiagent` stays `aiagent`). If they gave none, propose 5–8 from the text and mark them as yours.
-- **Per-platform sections** in the source ("YouTube:", "TikTok:", "Short description:") go into `overrides` for that platform, not into the main description.
-- **Chapters / timestamps** (`0:00 Intro`) stay in the description, one per line; YouTube needs the first one to be `0:00`. Put them in a YouTube override if the description is shared, since they mean nothing on the other platforms.
-- **Links**: keep on YouTube, Facebook and LinkedIn. TikTok captions do not make links clickable; leave them out of the TikTok override unless the user wants them.
-- If something essential cannot be worked out (what the video is about, which of two titles), ask one question. Do not ask about things you can decide.
+- **Keep the user's words and meaning.** Fix shape, not voice: remove markdown marks (`**`, `#` headings; `-` bullets become lines starting with "• " or plain lines), fix broken line breaks, remove duplicate lines, keep their language. Do not add claims, numbers or links that are not in their text.
+- **Title**: use theirs if there is one. If not, write one from the first idea of the text and list `"title"` in `written_by_claude`.
+- **Tags**: collect every `#hashtag` and every "tags:" list, remove them from the description, drop the `#`. If they gave none, propose 5–8 from the text and list `"tags"` in `written_by_claude`.
+- **Per-platform sections** in the source ("YouTube:", "TikTok:", "Short description:") go into `overrides`, not into the main description. Override keys: `youtube`, `youtube_short`, `facebook`, `facebook_reel`, `tiktok`, `linkedin`; each may set `title`, `description`, `tags`.
+- **Chapters / timestamps** (`0:00 Intro`) belong to the 16:9 cut: put the description with chapters in the `youtube` override and give `youtube_short` the plain one. YouTube needs the first chapter to be `0:00`.
+- **Links**: keep on YouTube, Facebook and LinkedIn. TikTok captions do not make links clickable; leave them out of a `tiktok` override unless the user wants them.
+- **`written_by_claude`** marks parts you wrote (`title`, `description`, `tags`); the Check screen labels them. **`notes`** are short lines the user should see at the top of the Check screen: choices you made, things you left out.
+- Do not ask in chat about things the user can simply fix on the Check screen. Ask only when you cannot tell what the video is about.
 
-Then build the per-platform text:
-
-```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/post-video/scripts/build_post.py" post.json --platforms youtube,tiktok --out post.ready.json
-```
-
-It enforces each platform's length limits, makes the hashtags, and lists warnings (something was cut). If text was cut, write a shorter override for that platform yourself and run it again; a cut-off sentence is not acceptable.
-
-## 3. Check the SRT
+## 3. Prepare and show the Check screen
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/post-video/scripts/check_srt.py" captions.srt --out captions.clean.srt --facebook-locale vi_VN --video video.mp4
+python3 "$S/prepare.py" "$W/submit.json" "$W/post.json" --out "$W/preview.json"
 ```
 
-It rewrites the file as clean UTF-8 SRT and fixes numbering, time format and order. Use the clean file for uploads. `--facebook-locale` (only when Facebook is a target) makes the copy Facebook demands, named `video.vi_VN.srt`. If it reports overlaps or cues past the end of the video, tell the user; upload anyway unless the times are clearly from another video (`ends_at` much longer than the video).
+This makes one entry per upload (YouTube with both videos is two: a video and a Short), fits the text to each platform's limits, cleans each SRT (and makes the copy Facebook needs, named like `video.vi_VN.srt`), and collects warnings. If it reports that text was cut for a platform, write a shorter override for that platform and run it again; a cut-off sentence is not acceptable.
+
+```bash
+python3 "$S/form.py" preview "$W/preview.json"
+```
+
+```bash
+python3 "$S/form.py" wait decision
+```
+
+The user edits the text on the page if they want and presses a button. Again `{"waiting": true}` means run it again.
+
+- `{"action": "back"}`: they went back to the form. Go to `wait submit` in step 1 and redo steps 2–3.
+- `{"action": "cancel"}`: `form.py stop`, say nothing was posted.
+- `{"action": "post", "posts": [...]}`: the approval. `posts` is the final list, with the user's edits. Upload exactly these: for each one `video`, `fields` (by `key`: `title`, `description`, `tags`, `text`, `caption`), `srt_file` (may be null), `visibility`, `key` (platform), `shape` (`wide` / `tall`), `id`.
 
 Where captions go:
 
 | Platform | SRT upload |
 |---|---|
 | YouTube | yes |
-| Facebook | yes, file name must end `.<locale>.srt` |
+| Facebook | yes, with the renamed copy in `srt_file`; Reels often offer only auto captions |
 | LinkedIn | yes |
-| TikTok | no upload on the web. Offer: turn on TikTok's own auto captions, or burn the SRT into a copy of the video with ffmpeg (ask first; it takes time and makes a new file) |
+| TikTok | no upload on the web: turn on TikTok's auto captions |
 
-## 4. Show the plan and get the yes
+## 4. Report progress on the page
 
-Before touching a browser, show per platform: the title, the full text exactly as it will be posted, the tags, captions yes/no, visibility. Keep it compact. Say what you wrote or changed yourself. Ask: post these? Apply any edits to `post.json`, rebuild, show the changed part again.
+The page shows a row per upload. Around each upload:
+
+```bash
+python3 "$S/form.py" progress youtube-wide uploading
+```
+
+```bash
+python3 "$S/form.py" progress youtube-wide posted --link https://youtu.be/...
+```
+
+Statuses: `uploading`, `posted`, `failed` (add `--note "why"`), `skipped`. When all are finished: `form.py done`, then `form.py stop`.
 
 ## 5. Upload in Chrome
 
@@ -96,11 +122,12 @@ How to work on every one of them:
 - One platform at a time, each in its own tab. Finish or fail one before the next.
 - These pages change often. The reference files describe the path and the fields, not selectors: read the page (`read_page` / `find`), find the field by its label, then act. Check after each step that the page did what you expected.
 - Attach files with `file_upload` on the page's file input. If the input cannot be reached or the upload does not start, ask the user to drag the file in themselves, then carry on with the text.
-- Paste text into the field in one go and read it back: rich editors sometimes drop line breaks or turn `#tag` into a suggestion popup (press Escape, or pick the exact tag).
+- Use each field's `value` from `final.json` as is. Paste text into the field in one go and read it back: rich editors sometimes drop line breaks or turn `#tag` into a suggestion popup (press Escape, or pick the exact tag).
 - Wait for upload and processing to finish before the final button. Long videos take minutes; check, do not guess.
 - A CAPTCHA, a "verify it's you", a copyright or policy warning, or a choice you were not told about (paid promotion, made for kids, AI-content label): stop and ask the user.
-- If the user already said yes in step 4 and the page shows exactly that text, press the final Post/Publish button. If anything differs from what they approved (text was cut by the site, different account or Page, different visibility), stop and ask again.
+- The user pressed Post on the Check screen, so when the site's page shows exactly the approved text, press the site's final Post/Publish button. If anything differs from what they approved (text was cut by the site, different account or Page, different visibility), stop and ask in chat.
+- A 9:16 upload to YouTube is a Short and to Facebook is a Reel; the reference files say what differs.
 
 ## 6. Report
 
-A short table: platform, result (posted / scheduled / failed / skipped), link to the post if the site gave one, captions attached or not. For a failure, say at which step and what the page said; do not retry a publish more than once, a double post is worse than a missing one. Leave `post.json`, `post.ready.json` and the clean SRT in place so a failed platform can be redone.
+A short table in chat: upload, result (posted / failed / skipped), link to the post if the site gave one, captions attached or not. For a failure, say at which step and what the page said; do not retry a publish more than once, a double post is worse than a missing one. The files in `~/.video-poster/current/` stay until the next run, so a failed upload can be redone from `final.json`.

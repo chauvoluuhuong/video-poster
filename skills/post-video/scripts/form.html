@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Post video</title>
+<style>
+:root{
+  --bg:#f6f6f4; --card:#fff; --ink:#1b1b1a; --muted:#6b6b68; --line:#e2e2de;
+  --accent:#1f5eff; --accent-ink:#fff; --warn-bg:#fff6e0; --warn-ink:#7a5200; --ok:#1a7f4b;
+  --bad:#b3261e; --field:#fafaf9;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#161615; --card:#1f1f1e; --ink:#ececea; --muted:#9a9a96; --line:#33332f;
+  --accent:#6d93ff; --accent-ink:#0d1020; --warn-bg:#3a2e12; --warn-ink:#f0cf85; --ok:#5fd09a;
+  --bad:#ff8a80; --field:#191918;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{max-width:780px;margin:0 auto;padding:20px 16px 96px}
+h1{font-size:19px;margin:0 0 2px} .sub{color:var(--muted);margin:0 0 14px}
+.steps{display:flex;gap:6px;margin:0 0 16px;padding:0;list-style:none;font-size:12.5px;color:var(--muted)}
+.steps li{padding:4px 10px;border:1px solid var(--line);border-radius:999px}
+.steps li.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.steps li.done{color:var(--ok);border-color:var(--ok)}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 10px;font-weight:600}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:600px){.two{grid-template-columns:1fr}}
+.slot{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--field)}
+.slot-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-weight:600}
+.shape{border:2px solid var(--muted);border-radius:3px;flex:none}
+.shape.w{width:32px;height:18px}.shape.t{width:14px;height:25px;margin:0 9px}
+.slot small{font-weight:400;color:var(--muted);display:block}
+.pick{display:flex;gap:8px;align-items:center;margin-top:6px}
+.pick label{width:44px;color:var(--muted);font-size:12.5px;flex:none}
+.path{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--card);color:var(--ink);font:12px ui-monospace,Menlo,monospace}
+.path::placeholder{color:var(--muted);font-family:inherit}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:5px 11px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.5;cursor:default}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600;padding:8px 16px}
+button.ghost{border-color:transparent;color:var(--muted)}
+textarea{width:100%;border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--field);color:var(--ink);font:inherit;resize:vertical}
+.or{color:var(--muted);font-size:12.5px;margin:8px 0 4px}
+.hint{color:var(--muted);font-size:12.5px;margin:6px 0 0}
+table{width:100%;border-collapse:collapse}
+td{padding:7px 4px;border-top:1px solid var(--line);vertical-align:middle}
+tr:first-child td{border-top:0}
+td.n{font-weight:600;white-space:nowrap} td.note{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+select{font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--card);color:var(--ink);max-width:100%}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px}
+.bar-in{max-width:780px;margin:0 auto;display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.bar-in .left{margin-right:auto;color:var(--muted);font-size:12.5px}
+.warn{background:var(--warn-bg);color:var(--warn-ink);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px}
+.warn ul{margin:4px 0 0;padding-left:18px}
+.err{background:transparent;border:1px solid var(--bad);color:var(--bad)}
+.post-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.post-head b{font-size:15px}
+.tag{font-size:11.5px;border:1px solid var(--line);border-radius:999px;padding:1px 8px;color:var(--muted)}
+.tag.you{border-color:var(--accent);color:var(--accent)}
+.meta{color:var(--muted);font-size:12.5px;margin:0 0 8px;overflow-wrap:anywhere}
+.fl{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--muted);margin:8px 0 3px}
+.fl .over{color:var(--bad);font-weight:600}
+input.t{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--field);color:var(--ink);font:inherit}
+.cap{font-size:12.5px;margin-top:8px}.cap.ok{color:var(--ok)}.cap.no{color:var(--warn-ink)}
+.center{text-align:center;padding:60px 0;color:var(--muted)}
+.spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;margin:0 auto 12px;animation:r 1s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+.st-posted{color:var(--ok)}.st-failed{color:var(--bad)}.st-waiting,.st-skipped{color:var(--muted)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Post video</h1>
+  <p class="sub">Choose the files, check the result, then post.</p>
+  <ol class="steps"><li id="s1">1 Files</li><li id="s2">2 Check</li><li id="s3">3 Post</li></ol>
+  <div id="errors" class="warn err" hidden></div>
+
+  <div id="form" hidden>
+    <section>
+      <h2>Videos</h2>
+      <div class="two">
+        <div class="slot">
+          <div class="slot-head"><span class="shape w"></span><div>Wide video 16:9<small>YouTube video, Facebook, LinkedIn</small></div></div>
+          <div class="pick"><label for="wide-video">Video</label><input class="path" id="wide-video" placeholder="No video"><button data-pick="video" data-for="wide-video">Choose…</button></div>
+          <div class="pick"><label for="wide-srt">SRT</label><input class="path" id="wide-srt" placeholder="No caption file"><button data-pick="srt" data-for="wide-srt">Choose…</button></div>
+        </div>
+        <div class="slot">
+          <div class="slot-head"><span class="shape t"></span><div>Vertical video 9:16<small>YouTube Short, TikTok, Reel</small></div></div>
+          <div class="pick"><label for="tall-video">Video</label><input class="path" id="tall-video" placeholder="No video"><button data-pick="video" data-for="tall-video">Choose…</button></div>
+          <div class="pick"><label for="tall-srt">SRT</label><input class="path" id="tall-srt" placeholder="No caption file"><button data-pick="srt" data-for="tall-srt">Choose…</button></div>
+        </div>
+      </div>
+      <p class="hint" id="pickhint">One video is enough. Choose opens the file picker; you can also paste a path.</p>
+    </section>
+
+    <section>
+      <h2>Description</h2>
+      <div class="pick" style="margin-top:0"><label for="desc-file">File</label><input class="path" id="desc-file" placeholder="No file"><button data-pick="text" data-for="desc-file">Choose…</button></div>
+      <div class="or">or paste the text here</div>
+      <textarea id="desc-text" rows="3" placeholder="Title, description, tags — any format. Claude cleans it up and you check the result on the next step."></textarea>
+    </section>
+
+    <section>
+      <h2>Post to</h2>
+      <table>
+        <tr><td><input type="checkbox" id="on-youtube" checked></td><td class="n"><label for="on-youtube">YouTube</label></td>
+            <td><select id="ch-youtube"><option value="both">Both: 16:9 video + 9:16 Short</option><option value="wide">16:9 video only</option><option value="tall">9:16 Short only</option></select></td></tr>
+        <tr><td><input type="checkbox" id="on-facebook" checked></td><td class="n"><label for="on-facebook">Facebook</label></td>
+            <td><select id="ch-facebook"><option value="wide">16:9 video</option><option value="tall">9:16 Reel</option><option value="both">Both: video + Reel</option></select></td></tr>
+        <tr><td><input type="checkbox" id="on-tiktok" checked></td><td class="n"><label for="on-tiktok">TikTok</label></td>
+            <td><select id="ch-tiktok"><option value="tall">9:16</option><option value="wide">16:9</option></select></td></tr>
+        <tr><td><input type="checkbox" id="on-linkedin" checked></td><td class="n"><label for="on-linkedin">LinkedIn</label></td>
+            <td><select id="ch-linkedin"><option value="wide">16:9</option><option value="tall">9:16</option></select></td></tr>
+      </table>
+      <div class="row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+        <label for="visibility">Visibility</label>
+        <select id="visibility"><option value="public">Public</option><option value="private">Private / only me</option><option value="unlisted">Unlisted (YouTube only)</option></select>
+        <label for="language">Caption language</label>
+        <select id="language"><option value="vi">Vietnamese (vi)</option><option value="en">English (en)</option></select>
+      </div>
+    </section>
+  </div>
+
+  <div id="preparing" class="center" hidden>
+    <div class="spin"></div>
+    Claude is reading your description and preparing each post…
+    <div class="hint">Keep this page open. If it takes long, Claude may have a question for you in the chat.</div>
+  </div>
+
+  <div id="preview" hidden></div>
+
+  <div id="posting" hidden>
+    <section><h2 id="posting-title">Posting</h2><table id="progress"></table>
+    <p class="hint" id="posting-hint">Claude is working in your Chrome. Progress and links also appear in the chat.</p></section>
+  </div>
+
+  <div id="cancelled" class="center" hidden>Cancelled. Nothing was posted. You can close this page.</div>
+</div>
+
+<div class="bar" id="bar"><div class="bar-in">
+  <span class="left" id="barnote"></span>
+  <button class="ghost" id="cancel">Cancel</button>
+  <button id="back" hidden>Back</button>
+  <button class="primary" id="go"></button>
+</div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const token = new URLSearchParams(location.search).get('t') || '';
+const PLATFORMS = ['youtube','facebook','tiktok','linkedin'];
+let phase = null, lastRev = -1, preview = null;
+
+async function api(route, body){
+  const r = await fetch(route, body === undefined
+    ? {headers: {'X-Token': token}}
+    : {method: 'POST', headers: {'X-Token': token, 'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  return {ok: r.ok, data: await r.json().catch(() => ({}))};
+}
+function el(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) { if (k === 'class') e.className = v; else if (k in e) e[k] = v; else e.setAttribute(k, v); }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+function showErrors(list){
+  const box = $('errors');
+  box.hidden = !list || !list.length;
+  box.replaceChildren();
+  if (!box.hidden) box.append(el('b', {}, 'Please fix'), el('ul', {}, ...list.map(t => el('li', {}, t))));
+  if (!box.hidden) window.scrollTo(0, 0);
+}
+
+/* ---------- form ---------- */
+function readForm(){
+  const platforms = {};
+  for (const p of PLATFORMS) if ($('on-' + p).checked) platforms[p] = $('ch-' + p).value;
+  return {
+    videos: { wide: {video: $('wide-video').value, srt: $('wide-srt').value},
+              tall: {video: $('tall-video').value, srt: $('tall-srt').value} },
+    description_file: $('desc-file').value, description_text: $('desc-text').value,
+    platforms, visibility: $('visibility').value, language: $('language').value,
+  };
+}
+function fillForm(f){
+  if (!f) return;
+  const v = f.videos || {};
+  for (const s of ['wide', 'tall']) { $(s + '-video').value = (v[s] || {}).video || ''; $(s + '-srt').value = (v[s] || {}).srt || ''; }
+  $('desc-file').value = f.description_file || ''; $('desc-text').value = f.description_text || '';
+  if (f.platforms) for (const p of PLATFORMS) { $('on-' + p).checked = p in f.platforms; if (f.platforms[p]) $('ch-' + p).value = f.platforms[p]; }
+  if (f.choices) for (const p of PLATFORMS) if (f.choices[p]) $('ch-' + p).value = f.choices[p];
+  if (f.visibility) $('visibility').value = f.visibility;
+  if (f.language) { const s = $('language'); if (![...s.options].some(o => o.value === f.language)) s.append(el('option', {value: f.language}, f.language)); s.value = f.language; }
+}
+function countUploads(){
+  const f = readForm(), has = {wide: !!f.videos.wide.video.trim(), tall: !!f.videos.tall.video.trim()};
+  let n = 0;
+  for (const c of Object.values(f.platforms)) n += c === 'both' ? (has.wide + has.tall || 0) : (has.wide || has.tall ? 1 : 0);
+  return {n, platforms: Object.keys(f.platforms).length};
+}
+function formNote(){ const c = countUploads(); $('barnote').textContent = `${c.platforms} platform${c.platforms === 1 ? '' : 's'} · ${c.n} upload${c.n === 1 ? '' : 's'}`; }
+document.querySelectorAll('[data-pick]').forEach(b => b.onclick = async () => {
+  b.disabled = true;
+  const {data} = await api('/api/pick', {kind: b.dataset.pick});
+  b.disabled = false;
+  if (data.path) { $(b.dataset.for).value = data.path; formNote(); }
+  if (data.unsupported) $('pickhint').textContent = 'The file picker is not available on this system: paste the full path instead.';
+});
+$('form').addEventListener('input', formNote);
+
+/* ---------- preview ---------- */
+function renderPreview(pv){
+  const root = $('preview');
+  root.replaceChildren();
+  if (pv.warnings && pv.warnings.length)
+    root.append(el('div', {class: 'warn'}, el('b', {}, `${pv.warnings.length} thing${pv.warnings.length === 1 ? '' : 's'} to check`), el('ul', {}, ...pv.warnings.map(w => el('li', {}, w)))));
+  for (const post of pv.posts) {
+    const sec = el('section', {'data-post': post.id},
+      el('div', {class: 'post-head'}, el('b', {}, post.platform), ...(post.badges || []).map(b => el('span', {class: 'tag'}, b))),
+      el('p', {class: 'meta'}, post.meta || ''));
+    for (const f of post.fields) {
+      const count = el('span', {});
+      const input = f.multiline ? el('textarea', {rows: Math.min(12, Math.max(3, f.value.split('\n').length + 1))}) : el('input', {class: 't'});
+      input.value = f.value; input.dataset.key = f.key; input.setAttribute('aria-label', `${post.platform} ${f.label}`);
+      const upd = () => { const n = input.value.length; count.textContent = f.limit ? `${n} / ${f.limit}` : `${n}`; count.className = f.limit && n > f.limit ? 'over' : ''; checkLimits(); };
+      input.addEventListener('input', upd);
+      sec.append(el('div', {class: 'fl'}, el('span', {}, f.label, f.by_claude ? el('span', {class: 'tag you', style: 'margin-left:6px'}, 'written by Claude') : null), count), input);
+      setTimeout(upd);
+    }
+    if (post.captions) sec.append(el('div', {class: 'cap ' + (post.captions.ok ? 'ok' : 'no')}, (post.captions.ok ? '✓ ' : '⚠ ') + post.captions.text));
+    root.append(sec);
+  }
+}
+function checkLimits(){ if (phase === 'preview') $('go').disabled = !!document.querySelector('#preview .over'); }
+function readEdits(){
+  return [...document.querySelectorAll('#preview [data-post]')].map(sec => ({
+    id: sec.dataset.post,
+    fields: Object.fromEntries([...sec.querySelectorAll('[data-key]')].map(i => [i.dataset.key, i.value])),
+  }));
+}
+
+/* ---------- posting ---------- */
+const WORDS = {waiting: 'Waiting', uploading: 'Uploading…', posted: '✓ Posted', failed: '✕ Failed', skipped: 'Skipped'};
+function renderProgress(s){
+  const rows = (s.preview ? s.preview.posts : []).map(p => {
+    const pr = s.progress[p.id] || {status: 'waiting'};
+    const link = pr.link ? el('a', {href: pr.link, target: '_blank', rel: 'noopener'}, pr.link) : (pr.note || '');
+    return el('tr', {}, el('td', {class: 'n'}, `${p.platform} · ${(p.badges || [''])[0]}`), el('td', {class: 'st-' + pr.status}, WORDS[pr.status] || pr.status), el('td', {class: 'note'}, link));
+  });
+  $('progress').replaceChildren(...rows);
+  const done = Object.values(s.progress).filter(p => p.status !== 'waiting' && p.status !== 'uploading').length;
+  $('posting-title').textContent = s.phase === 'done' ? 'Finished' : 'Posting';
+  $('posting-hint').textContent = s.phase === 'done' ? 'All done. You can close this page.' : 'Claude is working in your Chrome. Progress and links also appear in the chat.';
+  $('barnote').textContent = `${done} of ${rows.length} done`;
+}
+
+/* ---------- phases ---------- */
+function setPhase(s){
+  const changed = s.phase !== phase;
+  phase = s.phase;
+  const view = phase === 'done' ? 'posting' : phase;
+  for (const id of ['form', 'preparing', 'preview', 'posting', 'cancelled']) $(id).hidden = id !== view;
+  $('s1').className = phase === 'form' ? 'on' : 'done';
+  $('s2').className = (phase === 'preparing' || phase === 'preview') ? 'on' : (view === 'posting' ? 'done' : '');
+  $('s3').className = phase === 'posting' ? 'on' : (phase === 'done' ? 'done' : '');
+  $('back').hidden = phase !== 'preview';
+  $('go').hidden = !(phase === 'form' || phase === 'preview');
+  $('cancel').hidden = !(phase === 'form' || phase === 'preview' || phase === 'preparing');
+  $('bar').hidden = phase === 'cancelled';
+  if (changed) {
+    showErrors([]);
+    if (phase === 'form') { fillForm(s.form); $('go').textContent = 'Check the posts →'; $('go').disabled = false; formNote(); }
+    if (phase === 'preparing') $('barnote').textContent = '';
+    if (phase === 'preview') { preview = s.preview; renderPreview(preview); const n = preview.posts.length; $('go').textContent = `Post ${n} upload${n === 1 ? '' : 's'}`; $('barnote').textContent = 'Nothing is posted until you press Post'; }
+    window.scrollTo(0, 0);
+  }
+  if (view === 'posting') renderProgress(s);
+}
+$('go').onclick = async () => {
+  $('go').disabled = true;
+  const r = phase === 'form' ? await api('/api/submit', readForm()) : await api('/api/decision', {action: 'post', posts: readEdits()});
+  $('go').disabled = false;
+  if (!r.ok) showErrors(r.data.errors || ['Something went wrong; check the chat.']);
+  poll();
+};
+$('back').onclick = async () => { await api('/api/decision', {action: 'back'}); poll(); };
+$('cancel').onclick = async () => { await api('/api/decision', {action: 'cancel'}); poll(); };
+
+async function poll(){
+  try {
+    const {ok, data} = await api('/api/state');
+    if (ok && (data.rev !== lastRev || data.phase !== phase)) { lastRev = data.rev; setPhase(data); }
+  } catch (e) {
+    if (phase !== 'done' && phase !== 'cancelled') showErrors(['Lost the connection to the form. Ask Claude to open it again.']);
+  }
+}
+poll();
+setInterval(poll, 1500);
+</script>
+</body>
+</html>

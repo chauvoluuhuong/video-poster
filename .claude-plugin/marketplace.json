@@ -1,6 +1,8 @@
 {
-  "name": "video-poster-local",
-  "owner": { "name": "local" },
+  "name": "video-poster",
+  "owner": {
+    "name": "chauvoluuhuong"
+  },
   "plugins": [
     {
       "name": "video-poster",
