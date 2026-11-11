@@ -23,7 +23,8 @@ ARROW = re.compile(TIME + r"\s*-+>\s*" + TIME)
 
 
 def read_text(path):
-    raw = open(path, "rb").read()
+    with open(path, "rb") as f:
+        raw = f.read()
     for enc in ("utf-8-sig", "utf-16", "cp1258", "cp1252"):
         try:
             return raw.decode(enc), enc
@@ -68,7 +69,9 @@ def clean(srt, out=None, facebook_locale=None, video=None):
     text, enc = read_text(srt)
     cues = parse(text)
     problems, fixed = [], []
-    if open(srt, "rb").read(3) == b"\xef\xbb\xbf":
+    with open(srt, "rb") as f:
+        bom = f.read(3) == b"\xef\xbb\xbf"
+    if bom:
         fixed.append("removed BOM")
     elif enc != "utf-8-sig":
         fixed.append(f"encoding {enc} -> utf-8")

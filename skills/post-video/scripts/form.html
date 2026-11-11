@@ -69,6 +69,7 @@ input.t{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 8p
 .spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;margin:0 auto 12px;animation:r 1s linear infinite}
 @keyframes r{to{transform:rotate(360deg)}}
 .st-posted{color:var(--ok)}.st-failed{color:var(--bad)}.st-waiting,.st-skipped{color:var(--muted)}
+a{color:var(--accent)}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -191,6 +192,7 @@ function fillForm(f){
   for (const s of ['wide', 'tall']) { $(s + '-video').value = (v[s] || {}).video || ''; $(s + '-srt').value = (v[s] || {}).srt || ''; }
   $('desc-file').value = f.description_file || ''; $('desc-text').value = f.description_text || '';
   if (f.platforms) for (const p of PLATFORMS) { $('on-' + p).checked = p in f.platforms; if (f.platforms[p]) $('ch-' + p).value = f.platforms[p]; }
+  document.querySelectorAll('.path').forEach(i => { i.scrollLeft = i.scrollWidth; });
   if (f.choices) for (const p of PLATFORMS) if (f.choices[p]) $('ch-' + p).value = f.choices[p];
   if (f.visibility) $('visibility').value = f.visibility;
   if (f.language) { const s = $('language'); if (![...s.options].some(o => o.value === f.language)) s.append(el('option', {value: f.language}, f.language)); s.value = f.language; }
@@ -206,7 +208,7 @@ document.querySelectorAll('[data-pick]').forEach(b => b.onclick = async () => {
   b.disabled = true;
   const {data} = await api('/api/pick', {kind: b.dataset.pick});
   b.disabled = false;
-  if (data.path) { $(b.dataset.for).value = data.path; formNote(); }
+  if (data.path) { const i = $(b.dataset.for); i.value = data.path; i.scrollLeft = i.scrollWidth; formNote(); }
   if (data.unsupported) $('pickhint').textContent = 'The file picker is not available on this system: paste the full path instead.';
 });
 $('form').addEventListener('input', formNote);
