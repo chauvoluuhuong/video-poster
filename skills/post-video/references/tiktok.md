@@ -17,6 +17,8 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 8. Final button: **Post** (or **Schedule**, or **Save draft** if they asked). Press only with the user's yes.
 9. After posting, the page goes to the post list in TikTok Studio. Open the newest post and copy its link for the report; if it is still "processing" and has no link yet, say so.
 
+10. First comment (when `first_comment` is not empty): the post must have finished processing. Open it from the post list, click the comment box, paste the text (150 characters at most), **Post**. Then on your comment: **⋯ → Pin** if offered. Links in comments are not clickable either.
+
 Notes
 - Vertical 9:16 is expected. A wide video uploads but shows small; tell the user before posting.
 - Links in the caption are not clickable.

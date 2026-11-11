@@ -5,7 +5,7 @@ A Claude Code plugin that posts one video to YouTube, Facebook, TikTok and Linke
 ## How it works
 
 1. Run `/video-poster:post-video`. A form opens in your browser with all four platforms ticked.
-2. Choose a 16:9 video and/or a 9:16 video, an SRT for each, and a description file (or paste the text). The text can be messy: notes, a README, hashtags mixed in.
+2. Drag in or choose a 16:9 video and/or a 9:16 video, an SRT for each, and a description file (or paste the text). The text can be messy: notes, a README, hashtags mixed in.
 3. Press **Check the posts**. Claude turns your text into one clean post, fits it to each platform's limits, cleans the SRT, and shows every upload on the same page. Edit anything.
 4. Press **Post**. Only then does Claude upload, through the upload pages in the Chrome where you are logged in. The page shows progress and the links.
 
@@ -33,6 +33,8 @@ Needs: the Claude in Chrome extension, connected, with you logged in to each pla
 ## Status
 
 The form, the check screen, the text and SRT clean-up are covered by automatic tests. The uploads themselves are driven by written steps per site (`skills/post-video/references/`) and are **not tested automatically**: the sites change, so the first post on each platform may need a correction. Please open an issue with what the page showed.
+
+Each upload can also get a **first comment** (for example the download link), added and pinned where the site allows right after the video is posted.
 
 Not included: platform APIs, scheduling, thumbnails, Instagram.
 

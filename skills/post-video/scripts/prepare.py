@@ -65,13 +65,15 @@ def fields_for(platform, built, by_claude):
     def f(key, label, value, limit, multiline, required=True):
         return {"key": key, "label": label, "value": value, "limit": limit, "multiline": multiline,
                 "required": required, "by_claude": key in by_claude}
+    comment = f("first_comment", "First comment (optional, added after the video is posted)", built["first_comment"],
+                LIM[platform]["comment"], True, False)
     if platform == "youtube":
         return [f("title", "Title", built["title"], LIM["youtube"]["title"], False),
                 f("description", "Description", built["description"], LIM["youtube"]["text"], True, False),
-                f("tags", "Tags (comma separated)", ", ".join(built["tags"]), LIM["youtube"]["tags_chars"], False, False)]
+                f("tags", "Tags (comma separated)", ", ".join(built["tags"]), LIM["youtube"]["tags_chars"], False, False), comment]
     if platform == "tiktok":
-        return [f("caption", "Caption", built["caption"], LIM["tiktok"]["text"], True)]
-    return [f("text", "Text", built["text"], LIM[platform]["text"], True)]
+        return [f("caption", "Caption", built["caption"], LIM["tiktok"]["text"], True), comment]
+    return [f("text", "Text", built["text"], LIM[platform]["text"], True), comment]
 
 
 def prepare(form, post, work):

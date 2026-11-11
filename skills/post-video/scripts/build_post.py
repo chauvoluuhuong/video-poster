@@ -9,8 +9,10 @@ post.json (written by Claude from whatever the user gave):
   "description": "...",           # required, plain text, \n for new lines
   "tags": ["ai agent", "..."],    # plain words, no '#'
   "language": "vi",               # caption language, e.g. vi, en
+  "first_comment": "...",         # optional: posted as the first comment after the video is up
   "overrides": {                  # optional, per platform: youtube, youtube_short,
-    "tiktok": {"description": "shorter text", "tags": ["..."]}   # facebook, facebook_reel, tiktok, linkedin
+    "tiktok": {"description": "shorter text", "tags": ["..."]}   # facebook, facebook_reel, tiktok, linkedin;
+                                  # each may set title, description, tags, first_comment
   },
   "written_by_claude": ["title", "tags"],   # optional: parts the user did not give
   "notes": ["..."]                          # optional: things the user should check
@@ -28,10 +30,10 @@ import unicodedata
 PLATFORMS = ["youtube", "facebook", "tiktok", "linkedin"]
 
 LIMITS = {
-    "youtube": {"title": 100, "text": 5000, "tags_chars": 500, "hashtags": 3},
-    "facebook": {"text": 5000, "hashtags": 8},
-    "tiktok": {"text": 2200, "hashtags": 5},
-    "linkedin": {"text": 3000, "hashtags": 5},
+    "youtube": {"title": 100, "text": 5000, "tags_chars": 500, "hashtags": 3, "comment": 10000},
+    "facebook": {"text": 5000, "hashtags": 8, "comment": 8000},
+    "tiktok": {"text": 2200, "hashtags": 5, "comment": 150},
+    "linkedin": {"text": 3000, "hashtags": 5, "comment": 1250},
 }
 
 
@@ -100,6 +102,15 @@ def youtube_tags(tags, limit, warnings):
 
 def build(post, platform, variant=None):
     """Text for one upload. `variant` (youtube_short, facebook_reel) may have its own overrides."""
+    out = _build(post, platform, variant)
+    ov = post.get("overrides") or {}
+    o = dict(ov.get(platform, {}), **ov.get(variant or "", {}))
+    comment = clean_text(o.get("first_comment", post.get("first_comment", "")))
+    out["first_comment"] = cut(comment, LIMITS[platform]["comment"], out["warnings"], f"{platform} first comment")
+    return out
+
+
+def _build(post, platform, variant=None):
     w = []
     ov = post.get("overrides") or {}
     o = dict(ov.get(platform, {}), **ov.get(variant or "", {}))
@@ -122,7 +133,7 @@ def build(post, platform, variant=None):
         }
     if platform == "tiktok":
         # No title field: the first line is the hook.
-        body = title if desc.startswith(title) or not desc else f"{title}\n\n{desc}"
+        body = f"{title}\n\n{desc}" if desc and not desc.startswith(title) else (desc or title)
         return {"caption": with_hashtags(body, tags_h, lim["text"], w, "TikTok caption"), "warnings": w}
     # facebook, linkedin: one text box
     body = f"{title}\n\n{desc}" if desc and not desc.startswith(title) else (desc or title)
