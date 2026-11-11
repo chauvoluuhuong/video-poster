@@ -24,6 +24,8 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 Start: `https://www.facebook.com` → "What's on your mind" → **Photo/video** → attach the video → text ← `text` → audience **Public** unless told otherwise → **Post**.
 The profile composer has no SRT upload. After posting, the video's **⋯ → Edit video → Captions** sometimes offers it; try once, and report if it is not there.
 
+First comment (when `first_comment` is not empty): open the published post (or Reel) as the Page, write the comment under it, press Enter. Pinning is not offered on most Page posts; skip it when there is no such option.
+
 Notes
 - Do not accept or dismiss permission and policy dialogs for the user; show them what it says.
 - If Business Suite opens an ad-boost offer after posting, close it.

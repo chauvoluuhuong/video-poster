@@ -20,6 +20,8 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 6. Final button: **Publish** (or **Save** / **Schedule**). Press only with the user's yes.
 7. The dialog then shows the video link (`https://youtu.be/...`). Copy it for the report.
 
+8. First comment (when `first_comment` is not empty): open the video's watch page (for a Short, its Shorts page → comments icon). While the video is still processing, comments may be closed; wait until it plays. Click the comment box, paste the text, **Comment**. Then on your comment: **⋮ → Pin** → confirm.
+
 Notes
 - A `tall` upload (`id` `youtube-tall`) is the Short: same steps, YouTube decides it is a Short from the shape and length. When both uploads exist, do the 16:9 video first.
 - A vertical or square video of 3 minutes or less is treated as a Short automatically; there is nothing to choose.

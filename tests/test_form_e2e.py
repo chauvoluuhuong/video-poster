@@ -107,7 +107,7 @@ class FormFlow(unittest.TestCase):
 
         post = os.path.join(self.state, "post.json")
         with open(post, "w", encoding="utf-8") as f:
-            json.dump({"title": "Tiêu đề", "description": "Mô tả", "tags": ["một", "hai", "ba"],
+            json.dump({"title": "Tiêu đề", "description": "Mô tả", "tags": ["một", "hai", "ba"], "first_comment": "Link ở đây",
                        "written_by_claude": ["tags"], "notes": ["Check me"]}, f)
         preview = os.path.join(self.state, "preview.json")
         out = subprocess.run([sys.executable, os.path.join(S, "prepare.py"), os.path.join(self.state, "submit.json"),
@@ -140,6 +140,10 @@ class FormFlow(unittest.TestCase):
         self.assertEqual(len(decision["posts"]), 5)
         self.assertEqual(decision["posts"][0]["fields"][0]["value"], "Edited title")
         self.assertEqual(decision["posts"][1]["fields"][0]["value"], "Tiêu đề")  # untouched
+        for p in decision["posts"]:
+            self.assertEqual(p["fields"][-1]["key"], "first_comment")
+            self.assertEqual(p["fields"][-1]["value"], "Link ở đây")
+            self.assertFalse(p["fields"][-1]["required"])
 
         self.cli("progress", "youtube-wide", "posted", "--link", "https://youtu.be/x")
         state = self.http("/api/state")[1]

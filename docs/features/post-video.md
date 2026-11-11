@@ -40,6 +40,9 @@ Dropping a file on the page: a browser tells a page only the file's name, size a
 ## Tests and evidence
 - Unit: `tests/test_text.py`. End to end (real server and CLI over HTTP): `tests/test_form_e2e.py`. How to run: [harness](../harness/README.md).
 
+## First comment
+`post.json` → `first_comment` (per-platform overrides allowed) becomes an optional field on every upload. After an upload is published Claude adds it as a comment and pins it where possible; a failed comment does not fail the upload.
+
 ## Known limits
 - The uploads in Chrome are not tested automatically.
 - TikTok's web upload takes no SRT; Facebook Reels often offer only auto captions.

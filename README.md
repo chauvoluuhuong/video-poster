@@ -34,6 +34,8 @@ Needs: the Claude in Chrome extension, connected, with you logged in to each pla
 
 The form, the check screen, the text and SRT clean-up are covered by automatic tests. The uploads themselves are driven by written steps per site (`skills/post-video/references/`) and are **not tested automatically**: the sites change, so the first post on each platform may need a correction. Please open an issue with what the page showed.
 
+Each upload can also get a **first comment** (for example the download link), added and pinned where the site allows right after the video is posted.
+
 Not included: platform APIs, scheduling, thumbnails, Instagram.
 
 ## Contributing

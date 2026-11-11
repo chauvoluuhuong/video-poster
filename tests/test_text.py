@@ -40,6 +40,17 @@ class BuildPost(unittest.TestCase):
         for platform, key in (("tiktok", "caption"), ("linkedin", "text"), ("facebook", "text")):
             self.assertEqual(build_post.build(post, platform)[key], "Hook. And the rest of the text.\n\n#a")
 
+    def test_first_comment(self):
+        post = {"title": "t", "description": "d", "first_comment": " Link: https://example.com ",
+                "overrides": {"tiktok": {"first_comment": "x" * 200}, "linkedin": {"first_comment": ""}}}
+        self.assertEqual(build_post.build(post, "youtube")["first_comment"], "Link: https://example.com")
+        self.assertEqual(build_post.build(post, "youtube", "youtube_short")["first_comment"], "Link: https://example.com")
+        self.assertEqual(build_post.build(post, "linkedin")["first_comment"], "")  # override can clear it
+        tk = build_post.build(post, "tiktok")
+        self.assertLessEqual(len(tk["first_comment"]), 150)
+        self.assertTrue(tk["warnings"])
+        self.assertEqual(build_post.build({"title": "t", "description": "d"}, "facebook")["first_comment"], "")
+
     def test_limits(self):
         long = {"title": "t", "description": "word " * 1200, "tags": ["a"]}
         for platform, key in (("tiktok", "caption"), ("linkedin", "text")):

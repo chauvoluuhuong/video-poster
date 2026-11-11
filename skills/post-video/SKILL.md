@@ -53,6 +53,7 @@ Read `description_file` and `description_text` (when both are given, the pasted 
   "description": "Plain text.\n\nShort paragraphs.",
   "tags": ["plain words", "no hash sign"],
   "language": "vi",
+  "first_comment": "Tải về: https://example.com",
   "overrides": { "tiktok": { "description": "shorter text for TikTok" } },
   "written_by_claude": ["tags"],
   "notes": ["The file had two titles; I used the first."]
@@ -64,7 +65,8 @@ How to transform:
 - **Keep the user's words and meaning.** Fix shape, not voice: remove markdown marks (`**`, `#` headings; `-` bullets become lines starting with "• " or plain lines), fix broken line breaks, remove duplicate lines, keep their language. Do not add claims, numbers or links that are not in their text.
 - **Title**: use theirs if there is one. If not, write one from the first idea of the text and list `"title"` in `written_by_claude`.
 - **Tags**: collect every `#hashtag` and every "tags:" list, remove them from the description, drop the `#`. If they gave none, propose 5–8 from the text and list `"tags"` in `written_by_claude`.
-- **Per-platform sections** in the source ("YouTube:", "TikTok:", "Short description:") go into `overrides`, not into the main description. Override keys: `youtube`, `youtube_short`, `facebook`, `facebook_reel`, `tiktok`, `linkedin`; each may set `title`, `description`, `tags`.
+- **Per-platform sections** in the source ("YouTube:", "TikTok:", "Short description:") go into `overrides`, not into the main description. Override keys: `youtube`, `youtube_short`, `facebook`, `facebook_reel`, `tiktok`, `linkedin`; each may set `title`, `description`, `tags`, `first_comment`.
+- **First comment**: a "first comment" / "bình luận đầu tiên" / "pinned comment" part in the source goes into `first_comment` (or the platform's override), never into the description. Do not write one yourself; when the source has none, leave it out. The Check screen shows a First comment box for every upload, which the user can fill or clear.
 - **Chapters / timestamps** (`0:00 Intro`) belong to the 16:9 cut: put the description with chapters in the `youtube` override and give `youtube_short` the plain one. YouTube needs the first chapter to be `0:00`.
 - **Links**: keep on YouTube, Facebook and LinkedIn. TikTok captions do not make links clickable; leave them out of a `tiktok` override unless the user wants them.
 - **`written_by_claude`** marks parts you wrote (`title`, `description`, `tags`); the Check screen labels them. **`notes`** are short lines the user should see at the top of the Check screen: choices you made, things you left out.
@@ -135,8 +137,9 @@ How to work on every one of them:
 - Wait for upload and processing to finish before the final button. Long videos take minutes; check, do not guess.
 - A CAPTCHA, a "verify it's you", a copyright or policy warning, or a choice you were not told about (paid promotion, made for kids, AI-content label): stop and ask the user.
 - The user pressed Post on the Check screen, so when the site's page shows exactly the approved text, press the site's final Post/Publish button. If anything differs from what they approved (text was cut by the site, different account or Page, different visibility), stop and ask in chat.
+- **First comment**: when an upload's `first_comment` field is not empty, add it right after that upload is published: open the new post, write the comment exactly as given, send it, and pin it where the site offers that. It is part of what the user approved. If the post is still processing and comments are not open yet, wait and try once more. If the comment still cannot be added, the upload stays `posted`: report it with `--note "first comment not added"` and give the user the text to paste.
 - A 9:16 upload to YouTube is a Short and to Facebook is a Reel; the reference files say what differs.
 
 ## 6. Report
 
-A short table in chat: upload, result (posted / failed / skipped), link to the post if the site gave one, captions attached or not. For a failure, say at which step and what the page said; do not retry a publish more than once, a double post is worse than a missing one. The files in `~/.video-poster/current/` stay until the next run, so a failed upload can be redone from `final.json`.
+A short table in chat: upload, result (posted / failed / skipped), link to the post if the site gave one, captions attached or not, first comment added or not. For a failure, say at which step and what the page said; do not retry a publish more than once, a double post is worse than a missing one. The files in `~/.video-poster/current/` stay until the next run, so a failed upload can be redone from `final.json`.
