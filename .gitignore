@@ -1,0 +1,7 @@
+AGENTS.md
+CLAUDE.md
+.claude/
+/workspace
+__pycache__/
+*.pyc
+.DS_Store

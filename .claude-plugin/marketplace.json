@@ -1,0 +1,11 @@
+{
+  "name": "video-poster-local",
+  "owner": { "name": "local" },
+  "plugins": [
+    {
+      "name": "video-poster",
+      "source": "./",
+      "description": "Post one video to YouTube, Facebook, TikTok and LinkedIn with description, tags and SRT captions."
+    }
+  ]
+}

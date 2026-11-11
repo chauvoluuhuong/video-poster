@@ -1,0 +1,6 @@
+{
+  "name": "video-poster",
+  "version": "0.1.0",
+  "description": "Post one video to YouTube, Facebook, TikTok and LinkedIn from the user's own Chrome, with a cleaned-up description, tags and an SRT caption file.",
+  "keywords": ["video", "youtube", "facebook", "tiktok", "linkedin", "srt", "social"]
+}
