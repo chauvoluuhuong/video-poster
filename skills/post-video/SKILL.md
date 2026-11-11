@@ -115,11 +115,11 @@ python3 "$S/form.py" progress youtube-wide uploading
 python3 "$S/form.py" progress youtube-wide posted --link https://youtu.be/...
 ```
 
-Statuses: `uploading`, `posted`, `failed` (add `--note "why"`), `skipped`. When all are finished: `form.py done`, then `form.py stop`.
+Statuses: `uploading`, `posted`, `failed` (add `--note "why"`), `skipped`. When all are finished: `form.py done`, `form.py stop`, and `attach.py clean`.
 
 ## 5. Upload in Chrome
 
-Use the Claude in Chrome tools (`mcp__claude-in-chrome__*`); load them with ToolSearch in one call, including `file_upload`. The built-in browser pane is not logged in to these sites and cannot attach local files, so do not use it here. If Claude in Chrome is not connected, say so and stop; the text and the clean SRT are still ready for the user to post by hand.
+Use the Claude in Chrome tools (`mcp__claude-in-chrome__*`); load them with ToolSearch in one call, including `file_upload`, `javascript_tool` and `find`. The built-in browser pane is not logged in to these sites and cannot attach local files, so do not use it here. If Claude in Chrome is not connected, say so and stop; the text and the clean SRT are still ready for the user to post by hand.
 
 For each platform, read its file first and follow it:
 
@@ -132,7 +132,7 @@ How to work on every one of them:
 
 - One platform at a time, each in its own tab. Finish or fail one before the next.
 - These pages change often. The reference files describe the path and the fields, not selectors: read the page (`read_page` / `find`), find the field by its label, then act. Check after each step that the page did what you expected.
-- Attach files with `file_upload` on the page's file input. If the input cannot be reached or the upload does not start, ask the user to drag the file in themselves, then carry on with the text.
+- **Attach every file (video, SRT) the way `references/attach.md` describes**: `attach.py` cuts it into parts and the page joins them. Never give the video straight to `file_upload` (it refuses files over 10 MB and files outside the session's folders) and never click a button that opens the system file dialog. Only when that method fails as described there, ask the user to drag the file in.
 - Use each field's `value` from `final.json` as is. Paste text into the field in one go and read it back: rich editors sometimes drop line breaks or turn `#tag` into a suggestion popup (press Escape, or pick the exact tag).
 - Wait for upload and processing to finish before the final button. Long videos take minutes; check, do not guess.
 - A CAPTCHA, a "verify it's you", a copyright or policy warning, or a choice you were not told about (paid promotion, made for kids, AI-content label): stop and ask the user.
