@@ -31,6 +31,8 @@ sequenceDiagram
 
 State for one run is in `~/.video-poster/current/`. `~/.video-poster/last_form.json` remembers the dropdown choices, visibility and language.
 
+Dropping a file on the page: a browser tells a page only the file's name, size and date, never its folder. `/api/locate` finds the path from those (folders of files already chosen, then Spotlight, then a shallow walk of the usual folders). A small text file that cannot be found is copied into the run folder (`/api/drop`).
+
 ## Rules that must not break
 - Nothing is published before the user presses Post on the Check screen; Claude uploads exactly what `wait decision` returns.
 - The server accepts requests only with its token and a local Host header, and re-checks length limits on Post.
@@ -42,3 +44,4 @@ State for one run is in `~/.video-poster/current/`. `~/.video-poster/last_form.j
 - The uploads in Chrome are not tested automatically.
 - TikTok's web upload takes no SRT; Facebook Reels often offer only auto captions.
 - Native file picker on macOS only.
+- A dropped video that Spotlight does not index (external or excluded folders) cannot be located: use Choose or paste the path.

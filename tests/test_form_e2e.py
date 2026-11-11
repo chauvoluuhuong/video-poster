@@ -16,7 +16,8 @@ class FormFlow(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.state = os.path.join(self.tmp, "state")
-        self.env = dict(os.environ, HOME=self.tmp, VIDEO_POSTER_PICK="echo /picked/file.mp4")
+        self.env = dict(os.environ, HOME=self.tmp, VIDEO_POSTER_PICK="echo /picked/file.mp4",
+                        VIDEO_POSTER_SEARCH_DIRS=self.tmp)
         self.files = {}
         for name, body in (("wide.mp4", "x"), ("tall.mp4", "x"), ("wide.srt", SRT), ("desc.md", "# Title\ntext #tag")):
             self.files[name] = os.path.join(self.tmp, name)
@@ -72,6 +73,30 @@ class FormFlow(unittest.TestCase):
     def test_pick(self):
         self.assertEqual(self.http("/api/pick", {"kind": "video"})[1], {"path": "/picked/file.mp4"})
         self.assertEqual(self.http("/api/pick", {"kind": "exe"})[0], 400)
+
+    def test_drop_locates_file_by_name_and_size(self):
+        size = os.path.getsize(self.files["wide.srt"])
+        code, data = self.http("/api/locate", {"name": "wide.srt", "size": size, "mtime": 0, "dirs": []})
+        self.assertEqual(data, {"path": os.path.abspath(self.files["wide.srt"])})  # found under VIDEO_POSTER_SEARCH_DIRS
+        other = os.path.join(self.tmp, "elsewhere")
+        os.makedirs(other)
+        with open(os.path.join(other, "x.mp4"), "w") as f:
+            f.write("abc")
+        self.assertEqual(self.http("/api/locate", {"name": "x.mp4", "size": 3, "dirs": [other]})[1]["path"],
+                         os.path.join(other, "x.mp4"))  # found through the folder of an already chosen file
+        self.assertEqual(self.http("/api/locate", {"name": "wide.srt", "size": size + 1, "dirs": []})[1], {"not_found": True})
+        self.assertEqual(self.http("/api/locate", {"name": "../../etc/passwd", "size": 1})[1], {"not_found": True})
+
+    def test_drop_copies_small_text(self):
+        code, data = self.http("/api/drop", {"name": "../notes.md", "text": "hello"})
+        self.assertEqual(code, 200)
+        self.assertEqual(data["path"], os.path.join(self.state, "dropped", "notes.md"))  # no path escape
+        with open(data["path"], encoding="utf-8") as f:
+            self.assertEqual(f.read(), "hello")
+        self.assertEqual(self.http("/api/drop", {"name": "big.md", "text": "x" * (2 * 1024 * 1024 + 1)})[0], 400)
+
+    def test_url_command(self):
+        self.assertEqual(self.cli("url")["url"], self.srv["url"])
 
     def test_full_flow(self):
         self.assertEqual(self.cli("wait", "submit", "--timeout", "0.2"), {"waiting": True})

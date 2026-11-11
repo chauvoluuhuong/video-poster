@@ -9,6 +9,7 @@ Claude drives it with these commands (all take --state DIR, default ~/.video-pos
   form.py wait decision            block until Post / Back / Cancel; Post prints the final posts
   form.py progress ID STATUS [--link URL] [--note TEXT]   update one upload on the posting screen
   form.py done                     mark the run finished
+  form.py url                      print the page's link again
   form.py stop                     stop the server
 
 `wait` exits 0 with {"waiting": true} when --timeout (default 540 s) passes: run it again.
@@ -80,6 +81,56 @@ def pick_file(kind):
     out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     path = out.stdout.strip()
     return {"path": path} if out.returncode == 0 and path else {"cancelled": True}
+
+
+SMALL = 2 * 1024 * 1024  # dropped files up to this size may be sent as content (SRT, text)
+
+
+def locate_file(name, size, mtime_ms, hint_dirs):
+    """Find the full path of a file dropped on the page (a browser only tells name, size and date).
+
+    Looks in the folders of files already chosen, then Spotlight (macOS), then a shallow walk of
+    the usual folders. Returns {"path": ...} or {"not_found": true}.
+    """
+    name = os.path.basename(name or "")
+    if not name:
+        return {"not_found": True}
+
+    def fits(p):
+        try:
+            return os.path.isfile(p) and os.path.getsize(p) == size
+        except OSError:
+            return False
+
+    found = []
+    for d in hint_dirs or []:
+        p = os.path.join(expand(d), name)
+        if fits(p):
+            found.append(p)
+    env_dirs = os.environ.get("VIDEO_POSTER_SEARCH_DIRS")
+    if not found and sys.platform == "darwin" and not env_dirs:
+        try:
+            out = subprocess.run(["mdfind", "-name", name], capture_output=True, text=True, timeout=8)
+            found = [p for p in out.stdout.splitlines() if os.path.basename(p) == name and fits(p)]
+        except (OSError, subprocess.SubprocessError):
+            pass
+    if not found:
+        roots = env_dirs.split(os.pathsep) if env_dirs else [
+            os.path.expanduser(d) for d in ("~/Desktop", "~/Downloads", "~/Movies", "~/Videos", "~/Documents")]
+        end = time.time() + 4
+        for root in roots:
+            base = root.rstrip(os.sep).count(os.sep)
+            for folder, dirs, files in os.walk(root):
+                if time.time() > end:
+                    break
+                dirs[:] = [] if folder.count(os.sep) - base >= 4 else [d for d in dirs if not d.startswith(".")]
+                if name in files and fits(os.path.join(folder, name)):
+                    found.append(os.path.join(folder, name))
+    if not found:
+        return {"not_found": True}
+    # Same name and size in several places: take the one whose date matches the dropped file.
+    found.sort(key=lambda p: abs(os.path.getmtime(p) * 1000 - (mtime_ms or 0)))
+    return {"path": os.path.abspath(found[0])}
 
 
 def validate_form(form):
@@ -211,6 +262,24 @@ def make_handler(st):
                 if kind not in ("video", "srt", "text"):
                     return self.send(400, {"error": "bad kind"})
                 return self.send(200, pick_file(kind))
+
+            if route == "/api/locate":
+                try:
+                    size = int(body.get("size"))
+                except (TypeError, ValueError):
+                    return self.send(400, {"error": "bad size"})
+                return self.send(200, locate_file(body.get("name"), size, body.get("mtime"), body.get("dirs")))
+
+            if route == "/api/drop":  # a small dropped file (SRT, text) that could not be located: keep a copy
+                name = os.path.basename(body.get("name") or "")
+                text = body.get("text")
+                if not name or not isinstance(text, str) or len(text.encode()) > SMALL:
+                    return self.send(400, {"error": "bad file"})
+                folder = st.path("dropped")
+                os.makedirs(folder, exist_ok=True)
+                with open(os.path.join(folder, name), "w", encoding="utf-8", newline="") as f:
+                    f.write(text)
+                return self.send(200, {"path": os.path.join(folder, name), "copied": True})
 
             if route == "/api/submit":
                 form, errors = validate_form(body)
@@ -362,6 +431,7 @@ def main():
     s = sub.add_parser("progress"); s.add_argument("id"); s.add_argument("status", choices=STATUSES)
     s.add_argument("--link"); s.add_argument("--note")
     sub.add_parser("done")
+    sub.add_parser("url")
     sub.add_parser("stop")
     for p in sub.choices.values():
         p.add_argument("--state", default=argparse.SUPPRESS)
@@ -383,6 +453,9 @@ def main():
         print(json.dumps(call(a.state, "/api/progress", {"id": a.id, "status": a.status, "link": a.link, "note": a.note})))
     elif a.cmd == "done":
         print(json.dumps(call(a.state, "/api/progress", {"done": True})))
+    elif a.cmd == "url":
+        srv = read_json(os.path.join(a.state, "server.json"))
+        print(json.dumps({"url": srv["url"]} if srv else {"error": "form server is not running; run: form.py start"}))
     elif a.cmd == "stop":
         srv = read_json(os.path.join(a.state, "server.json"))
         if srv:

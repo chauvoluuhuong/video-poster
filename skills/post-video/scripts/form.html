@@ -29,6 +29,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute
 @media (max-width:600px){.two{grid-template-columns:1fr}}
 .slot{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--field)}
 .slot-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-weight:600}
+.drop{outline:2px dashed var(--accent);outline-offset:2px}
 .shape{border:2px solid var(--muted);border-radius:3px;flex:none}
 .shape.w{width:32px;height:18px}.shape.t{width:14px;height:25px;margin:0 9px}
 .slot small{font-weight:400;color:var(--muted);display:block}
@@ -84,21 +85,21 @@ a{color:var(--accent)}
     <section>
       <h2>Videos</h2>
       <div class="two">
-        <div class="slot">
+        <div class="slot" data-drop="wide">
           <div class="slot-head"><span class="shape w"></span><div>Wide video 16:9<small>YouTube video, Facebook, LinkedIn</small></div></div>
           <div class="pick"><label for="wide-video">Video</label><input class="path" id="wide-video" placeholder="No video"><button data-pick="video" data-for="wide-video">Choose…</button></div>
           <div class="pick"><label for="wide-srt">SRT</label><input class="path" id="wide-srt" placeholder="No caption file"><button data-pick="srt" data-for="wide-srt">Choose…</button></div>
         </div>
-        <div class="slot">
+        <div class="slot" data-drop="tall">
           <div class="slot-head"><span class="shape t"></span><div>Vertical video 9:16<small>YouTube Short, TikTok, Reel</small></div></div>
           <div class="pick"><label for="tall-video">Video</label><input class="path" id="tall-video" placeholder="No video"><button data-pick="video" data-for="tall-video">Choose…</button></div>
           <div class="pick"><label for="tall-srt">SRT</label><input class="path" id="tall-srt" placeholder="No caption file"><button data-pick="srt" data-for="tall-srt">Choose…</button></div>
         </div>
       </div>
-      <p class="hint" id="pickhint">One video is enough. Choose opens the file picker; you can also paste a path.</p>
+      <p class="hint" id="pickhint">One video is enough. Drag files onto a box, press Choose, or paste a path.</p>
     </section>
 
-    <section>
+    <section data-drop="desc">
       <h2>Description</h2>
       <div class="pick" style="margin-top:0"><label for="desc-file">File</label><input class="path" id="desc-file" placeholder="No file"><button data-pick="text" data-for="desc-file">Choose…</button></div>
       <div class="or">or paste the text here</div>
@@ -129,7 +130,7 @@ a{color:var(--accent)}
   <div id="preparing" class="center" hidden>
     <div class="spin"></div>
     Claude is reading your description and preparing each post…
-    <div class="hint">Keep this page open. If it takes long, Claude may have a question for you in the chat.</div>
+    <div class="hint">Keep this page open. If nothing happens within a minute, type "continue" in the chat.</div>
   </div>
 
   <div id="preview" hidden></div>
@@ -212,6 +213,35 @@ document.querySelectorAll('[data-pick]').forEach(b => b.onclick = async () => {
   if (data.unsupported) $('pickhint').textContent = 'The file picker is not available on this system: paste the full path instead.';
 });
 $('form').addEventListener('input', formNote);
+
+/* ---------- drag and drop ---------- */
+// A browser never tells a page where a dropped file lives, only its name, size and date.
+// The server finds the path from those; small text files that cannot be found are copied instead.
+function targetFor(zone, file){
+  const srt = /\.(srt|vtt)$/i.test(file.name);
+  if (zone === 'desc') return 'desc-file';
+  return zone + (srt ? '-srt' : '-video');
+}
+async function placeDropped(zone, file){
+  const input = $(targetFor(zone, file));
+  const dirs = [...document.querySelectorAll('.path')].map(i => i.value.trim()).filter(Boolean).map(p => p.replace(/\/[^/]*$/, ''));
+  let {data} = await api('/api/locate', {name: file.name, size: file.size, mtime: file.lastModified, dirs});
+  if (!data.path && file.size <= 2 * 1024 * 1024 && !/\.(mp4|mov|m4v|webm|mkv)$/i.test(file.name))
+    ({data} = await api('/api/drop', {name: file.name, text: await file.text()}));
+  if (data.path) { input.value = data.path; input.scrollLeft = input.scrollWidth; formNote(); return null; }
+  return `Could not find where "${file.name}" is on this computer. Use Choose… or paste its path.`;
+}
+document.querySelectorAll('[data-drop]').forEach(zone => {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drop'); });
+  zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) zone.classList.remove('drop'); });
+  zone.addEventListener('drop', async e => {
+    e.preventDefault(); zone.classList.remove('drop');
+    const errors = [];
+    for (const file of e.dataTransfer.files) { const err = await placeDropped(zone.dataset.drop, file); if (err) errors.push(err); }
+    showErrors(errors);
+  });
+});
+for (const ev of ['dragover', 'drop']) window.addEventListener(ev, e => e.preventDefault());
 
 /* ---------- preview ---------- */
 function renderPreview(pv){

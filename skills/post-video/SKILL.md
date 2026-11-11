@@ -22,13 +22,22 @@ Always start here, also when the user gave files or platforms in their message. 
 python3 "$S/form.py" start
 ```
 
-It opens the page in the user's browser and prints its URL; give the user the link in one line in case the page did not come to the front. Then wait:
+It opens the page in the user's browser and prints `{"url": ...}`. **Right away, before any other tool call, write the link to the user on its own line**, every time the skill runs:
+
+> **Open the form:** http://127.0.0.1:PORT/?t=...
+> Choose your files and press **Check the posts**. I continue by myself when you do.
+
+The user needs that link when the page did not come to the front or was closed (`form.py url` prints it again). Then wait for them:
 
 ```bash
-python3 "$S/form.py" wait submit
+python3 "$S/form.py" wait submit --timeout 3000
 ```
 
-Run it with a 10-minute timeout. `{"waiting": true}` means the user is still filling it in: run it again (no message to the user). `{"action": "cancel"}` means stop: run `form.py stop` and say nothing was posted.
+**Run every `wait` in the background** (Bash `run_in_background: true`) and end your turn; you are woken when the user presses the button, and the chat does not show a command that looks stuck. Only where background commands are not available, run it in the foreground with `--timeout 540` and a 10-minute tool timeout, and run it again on `{"waiting": true}`.
+
+Results of `wait submit`: the form (below); `{"waiting": true}` after the timeout: start the wait again, no message to the user; `{"action": "cancel"}`: run `form.py stop` and say nothing was posted.
+
+If the user writes in chat while a wait is running ("continue", "I submitted", "it is stuck"), do not start a second form: run `form.py wait submit --timeout 5` (or `wait decision`) in the foreground to read where things stand and go on from there.
 
 The result is the form: `videos.wide` (16:9) and `videos.tall` (9:16), each with `video` and `srt`; `description_file` and/or `description_text`; `platforms` with which video each one gets (`wide`, `tall`, `both`); `visibility`; `language`.
 
@@ -74,10 +83,10 @@ python3 "$S/form.py" preview "$W/preview.json"
 ```
 
 ```bash
-python3 "$S/form.py" wait decision
+python3 "$S/form.py" wait decision --timeout 3000
 ```
 
-The user edits the text on the page if they want and presses a button. Again `{"waiting": true}` means run it again.
+Run it in the background like the first wait, and tell the user in one line that the Check screen is ready, with the number of uploads and of notes to check, and the link again. The user edits the text on the page if they want and presses a button.
 
 - `{"action": "back"}`: they went back to the form. Go to `wait submit` in step 1 and redo steps 2–3.
 - `{"action": "cancel"}`: `form.py stop`, say nothing was posted.
