@@ -15,6 +15,7 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 3. Leave a separate title field, if there is one, empty: the first line of `text` is the title.
 4. Captions: open the video's options (**Edit video** / **Captions** / **Video options**, the name varies) → **Upload** → attach `srt_file`, the copy named like `video.vi_VN.srt` (skip when it is null). Facebook rejects any other file name. Set it as the default caption language.
    Reels composer often has no SRT upload, only auto captions; if so, say that and ask whether to use auto captions or post as a normal video instead.
+   Thumbnail / cover (when `thumbnail` is not null): in the same video options, **Thumbnail** (for a Reel: **Edit cover**) → **Upload image** → attach the image.
 5. Placement: Facebook only, unless the user asked for Instagram too. Untick anything they did not ask for.
 6. Final button: **Publish** (or **Schedule**). Press only with the user's yes.
 7. After publishing, open the Page's latest post and copy its link for the report.
