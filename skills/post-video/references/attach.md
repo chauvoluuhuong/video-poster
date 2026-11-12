@@ -13,7 +13,7 @@ Use it for every file you attach: videos, SRT files and thumbnails alike.
    python3 "$S/attach.py" split "/path/to/video.mp4" --accept video
    ```
 
-   `--accept srt` for a caption file, `--accept image` for a thumbnail. It prints JSON: `parts` (paths, in order), `setup_js`, `finish_js`, `cleanup_js`. A `warning` means the file is very large (over about 480 MB): ask the user to drag it into the page instead.
+   Add `--tag <upload id>` when several uploads run at the same time, so two uploaders attaching the same video do not share a parts folder. `--accept srt` for a caption file, `--accept image` for a thumbnail. It prints JSON: `parts` (paths, in order), `setup_js`, `finish_js`, `cleanup_js`. A `warning` means the file is very large (over about 480 MB): ask the user to drag it into the page instead.
 3. Run `setup_js` in the tab with `javascript_tool`. It adds a small file input at the top left of the page, labelled "video poster part input".
 4. `find` that input ("video poster part input") to get its ref, then call `file_upload` once per part with that ref, one part per call. All parts must go to this input, none to the site's own input.
 5. Run `finish_js` in the tab. It joins the parts, verifies them, gives the file to the site's file input and fires the events the site listens for. Read the result:
@@ -21,7 +21,7 @@ Use it for every file you attach: videos, SRT files and thumbnails alike.
    - `"no matching file input on the page"`: the result lists the inputs it saw. Split again with `--selector "<css of the right input>"`, or, when the site only has a drop zone, with `--drop "<css of the drop zone>"`, then repeat steps 3–5.
    - `"parts on the page do not match"` or a size/hash error: run `cleanup_js`, then repeat steps 3–5.
    - `ok` but the site shows nothing after a few seconds: its input ignores scripted changes. Split again with `--drop "<css of the drop zone>"` and repeat.
-6. When all uploads of the run are finished:
+6. When all uploads of the run are finished (the main session does this, never an uploader):
 
    ```bash
    python3 "$S/attach.py" clean
