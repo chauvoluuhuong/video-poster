@@ -6,4 +6,5 @@ python3 -c "import json; [json.load(open(f)) for f in ('.claude-plugin/plugin.js
 python3 -m py_compile skills/post-video/scripts/*.py
 grep -q '^name: post-video$' skills/post-video/SKILL.md
 grep -q '^name: description-file$' skills/description-file/SKILL.md
+grep -q '^model: sonnet$' agents/uploader.md
 python3 -m unittest discover -s tests -v

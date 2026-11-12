@@ -14,6 +14,8 @@ The user picks videos, SRT files and a description on a local page, checks every
 | Folder scan | `skills/post-video/scripts/scan.py` | Finds videos (by shape), SRT, thumbnails and the description file in a folder → `prefill.json` for `form.py start --prefill`; unsure choices become hints on the form |
 | Structure parser | `skills/post-video/scripts/parse_post.py` | Reads a description file in the documented structure into `post.json` word for word |
 | Structure spec | `skills/description-file/SKILL.md` | The structure, written for AIs that generate the file; its example and heading list are parsed in the tests |
+| Uploader agent | `agents/uploader.md` | One per upload, on Sonnet, all in parallel, each in its own Chrome tab; returns status, link and lessons; returns `needs_user` instead of asking |
+| Learned notes | `skills/post-video/scripts/learn.py` → `~/.video-poster/learned/<platform>.md` | The latest instructions and errors per site, rewritten (never appended) by the main session after a run, at most 40 lines; pasted into the next run's uploader briefs |
 | Site steps | `skills/post-video/references/*.md` | Where to click on each platform's upload page |
 
 How they talk:
@@ -42,7 +44,10 @@ Dropping a file on the page: a browser tells a page only the file's name, size a
 - The server accepts requests only with its token and a local Host header, and re-checks length limits on Post.
 
 ## Tests and evidence
-- Unit: `tests/test_text.py`, `tests/test_attach.py`, `tests/test_structure.py`. End to end (real server and CLI over HTTP): `tests/test_form_e2e.py`. How to run: [harness](../harness/README.md).
+- Unit: `tests/test_text.py`, `tests/test_attach.py`, `tests/test_structure.py`, `tests/test_learn.py`. End to end (real server and CLI over HTTP): `tests/test_form_e2e.py`. How to run: [harness](../harness/README.md).
+
+## Posting phase
+The main session (the user's model) does the text and the Check screen; the clicking is handed to uploader agents so it is cheaper and runs in parallel. Checked by hand on 2026-11-12: two Sonnet agents each created, drove and closed their own tab at the same time without touching the other's. Only the main session writes the learned notes and runs `attach.py clean`, so parallel uploaders never write the same file; `attach.py --tag` keeps their part folders apart.
 
 ## Refine on the Check screen
 The user writes an instruction and presses Apply with Claude. The server saves the posts as they are on the page (with the user's own edits) to `refine.json`, switches the page to "applying", and `wait decision` returns `{action: refine, instruction, file}`. Claude changes field values in that file and pushes it back with `form.py preview`. Nothing is posted by a refine; Post still re-checks the limits.
