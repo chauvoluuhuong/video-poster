@@ -138,31 +138,58 @@ python3 "$S/form.py" progress youtube-wide uploading
 python3 "$S/form.py" progress youtube-wide posted --link https://youtu.be/...
 ```
 
-Statuses: `uploading`, `posted`, `failed` (add `--note "why"`), `skipped`. When all are finished: `form.py done`, `form.py stop`, and `attach.py clean`.
+Statuses: `uploading`, `posted`, `failed` (add `--note "why"`), `skipped`. The uploaders send these for their own upload. When all uploaders are finished, you run `form.py done`, `form.py stop` and `attach.py clean`.
 
 ## 5. Upload in Chrome
 
-Use the Claude in Chrome tools (`mcp__claude-in-chrome__*`); load them with ToolSearch in one call, including `file_upload`, `javascript_tool` and `find`. The built-in browser pane is not logged in to these sites and cannot attach local files, so do not use it here. If Claude in Chrome is not connected, say so and stop; the text and the clean SRT are still ready for the user to post by hand.
+The uploads go through the Claude in Chrome tools (`mcp__claude-in-chrome__*`). The built-in browser pane is not logged in to these sites, so do not use it here. If Claude in Chrome is not connected, say so and stop; the text and the clean SRT are still ready for the user to post by hand.
 
-For each platform, read its file first and follow it:
+### Hand each upload to an uploader, all at once
 
-- YouTube → `references/youtube.md`
-- Facebook → `references/facebook.md`
-- TikTok → `references/tiktok.md`
-- LinkedIn → `references/linkedin.md`
+Posting is slow, step-by-step work that needs no deep thinking, so it does not run in this chat. Start one **uploader** agent per entry in `posts` (agent type `video-poster:uploader`, which runs on Sonnet), **all in one message so they run at the same time**, each in its own Chrome tab. If that agent type is not available, use a general-purpose agent with `model: "sonnet"` and paste the content of `${CLAUDE_PLUGIN_ROOT}/agents/uploader.md` at the top of its brief. Only when no agent tool exists at all, do the uploads yourself, one after another, following the same rules.
 
-How to work on every one of them:
+Before starting them, read the learned notes of each platform involved:
 
-- One platform at a time, each in its own tab. Finish or fail one before the next.
-- These pages change often. The reference files describe the path and the fields, not selectors: read the page (`read_page` / `find`), find the field by its label, then act. Check after each step that the page did what you expected.
-- **Attach every file (video, SRT) the way `references/attach.md` describes**: `attach.py` cuts it into parts and the page joins them. Never give the video straight to `file_upload` (it refuses files over 10 MB and files outside the session's folders) and never click a button that opens the system file dialog. Only when that method fails as described there, ask the user to drag the file in.
-- Use each field's `value` from `final.json` as is. Paste text into the field in one go and read it back: rich editors sometimes drop line breaks or turn `#tag` into a suggestion popup (press Escape, or pick the exact tag).
-- Wait for upload and processing to finish before the final button. Long videos take minutes; check, do not guess.
-- A CAPTCHA, a "verify it's you", a copyright or policy warning, or a choice you were not told about (paid promotion, made for kids, AI-content label): stop and ask the user.
-- The user pressed Post on the Check screen, so when the site's page shows exactly the approved text, press the site's final Post/Publish button. If anything differs from what they approved (text was cut by the site, different account or Page, different visibility), stop and ask in chat.
-- **Thumbnail**: when an upload's `thumbnail` is not null, attach it where the site's reference file says (`attach.py split ... --accept image`). If the site does not offer a custom thumbnail for this account or this kind of post, go on without it and report `--note "thumbnail not set"`; never block a post on it.
-- **First comment**: when an upload's `first_comment` field is not empty, add it right after that upload is published: open the new post, write the comment exactly as given, send it, and pin it where the site offers that. It is part of what the user approved. If the post is still processing and comments are not open yet, wait and try once more. If the comment still cannot be added, the upload stays `posted`: report it with `--note "first comment not added"` and give the user the text to paste.
-- A 9:16 upload to YouTube is a Short and to Facebook is a Reel; the reference files say what differs.
+```bash
+python3 "$S/learn.py" show youtube
+```
+
+Each uploader's brief contains, and nothing else is needed:
+
+- the upload `id` and the path of `final.json` (`$W/final.json`);
+- `S`, the form state folder (`~/.video-poster/current`), and the folder for file parts (this session's working directory, as an absolute path);
+- the paths of the platform's reference file, of `references/uploading.md` and of `references/attach.md`:
+  YouTube → `references/youtube.md`, Facebook → `references/facebook.md`, TikTok → `references/tiktok.md`, LinkedIn → `references/linkedin.md`;
+- the learned notes for that platform, pasted in full (or "none yet");
+- anything the user told you in chat that the upload needs (which Page or channel, "made for kids: no").
+
+Tell the user in one line that the uploads have started and that the page shows progress. Then wait for the uploaders; do not drive the browser yourself meanwhile.
+
+### When an uploader comes back
+
+- `posted`: nothing to do. `failed`: note the problem for the report; do not retry a publish yourself.
+- `needs_user`: ask the user its question in chat (a login, which Page, a policy warning). When they answer, send the answer to that same uploader so it continues in its tab; do not start a new one, which could post twice.
+
+### After all uploads: update the learned notes
+
+The notes are how the next run gets faster: a short file per platform with what is true **now** about that site's upload pages. They are not a log.
+
+Update a platform's notes only when its uploaders reported lessons other than "none", or when a note proved wrong. Then write the whole file again, merging the old notes with the new lessons:
+
+- keep two short lists: `## Do` (steps, addresses, button names, order that work and differ from the reference file) and `## Avoid` (the latest errors and what fixed them);
+- one line per item; replace an old line when a new lesson contradicts it; delete what the reference file already says or what no longer applies;
+- facts about the site only, never about this video, the account's content or the user;
+- stay under 40 lines.
+
+```bash
+python3 "$S/learn.py" save youtube --file /path/to/new-notes.md
+```
+
+When nothing new was learned, leave the file alone.
+
+### Rules for every upload
+
+They are in `references/uploading.md` (how to attach files, fill text, when to stop, thumbnail, first comment). Give its path to every uploader, and follow it yourself if you upload without agents.
 
 ## 6. Report
 

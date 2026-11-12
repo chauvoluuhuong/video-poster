@@ -7,12 +7,13 @@ folder the session can read, and prints two JavaScript snippets. The first adds 
 input to the page that collects the parts; the second joins them into one file, byte for byte,
 and hands it to the site's own file input (or drops it on a drop zone).
 
-  attach.py split FILE [--dir DIR] [--accept video|srt|image|any] [--selector CSS] [--drop CSS]
+  attach.py split FILE [--dir DIR] [--accept video|srt|image|any] [--selector CSS] [--drop CSS] [--tag ID]
       Prints JSON: parts (paths, in order), setup_js, finish_js, cleanup_js, name, size.
       --dir      a folder the session can read; default: the current directory
       --accept   which of the site's file inputs to use when --selector is not given
       --selector CSS selector of the site's file input
       --drop     CSS selector of a drop zone: drop the file there instead of using an input
+      --tag      the upload's id, when several uploads run at the same time (keeps their parts apart)
   attach.py clean [--dir DIR]
       Removes the parts folder.
 
@@ -82,11 +83,12 @@ FINISH_JS = """(async () => {
 CLEANUP_JS = "(() => { document.getElementById('vp-part-input')?.remove(); delete window.__vpParts; return 'removed'; })()"
 
 
-def split(path, base, accept="any", selector=None, drop=None):
+def split(path, base, accept="any", selector=None, drop=None, tag=""):
     path = os.path.abspath(os.path.expanduser(path))
     size = os.path.getsize(path)
     digest = hashlib.sha256()
-    key = hashlib.sha256(f"{path}:{size}:{os.path.getmtime(path)}".encode()).hexdigest()[:12]
+    # the tag keeps two uploaders that attach the same file at the same time out of each other's folder
+    key = hashlib.sha256(f"{path}:{size}:{os.path.getmtime(path)}:{tag}".encode()).hexdigest()[:12]
     folder = os.path.join(os.path.abspath(os.path.expanduser(base)), FOLDER, key)
     shutil.rmtree(folder, ignore_errors=True)
     os.makedirs(folder)
@@ -133,6 +135,7 @@ def main():
     s.add_argument("--accept", choices=("video", "srt", "image", "any"), default="any")
     s.add_argument("--selector")
     s.add_argument("--drop")
+    s.add_argument("--tag", default="")
     c = sub.add_parser("clean")
     c.add_argument("--dir", default=".")
     a = ap.parse_args()
@@ -140,7 +143,7 @@ def main():
         if not os.path.isfile(os.path.expanduser(a.file)):
             print(json.dumps({"error": f"file not found: {a.file}"}))
             sys.exit(1)
-        print(json.dumps(split(a.file, a.dir, a.accept, a.selector, a.drop), ensure_ascii=False, indent=2))
+        print(json.dumps(split(a.file, a.dir, a.accept, a.selector, a.drop, a.tag), ensure_ascii=False, indent=2))
     else:
         print(json.dumps(clean(a.dir)))
 
