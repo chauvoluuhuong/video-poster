@@ -3,8 +3,9 @@
 
 Usage:  parse_post.py FILE [--out post.json]
 
-The structure is described in skills/description-file/SKILL.md. A file counts as structured
-only when it carries the marker line  <!-- video-poster: v1 -->  ; anything else prints
+The structure is described in skills/description-file/SKILL.md, in two forms with the same
+content: Markdown, marked by the line  <!-- video-poster: v1 -->  , and JSON, an object with
+"video_poster": 1 (written by tools such as the make-video skill). Anything else prints
 {"structured": false} and Claude turns the text into post.json by hand instead.
 
 Prints {"structured": true, "post": {...}, "files": {...}, "settings": {...}, "problems": [...]}.
@@ -55,7 +56,113 @@ def pairs_of(text):
     return out
 
 
+PLATFORMS = ("youtube", "facebook", "tiktok", "linkedin")
+OVERRIDE_KEYS = sorted(set(PLATFORM_KEYS.values()))
+TEXT_FIELDS = ("title", "description", "first_comment")
+JSON_KEYS = ("video_poster", "title", "description", "tags", "first_comment", "overrides", "files", "settings")
+
+
+def resolve(value, base_dir):
+    path = os.path.expanduser(value)
+    return os.path.abspath(path if os.path.isabs(path) else os.path.join(base_dir, path))
+
+
+def parse_json(data, base_dir="."):
+    """The JSON form: the same content as the Markdown form, as one object."""
+    problems, post = [], {"title": "", "description": "", "tags": [], "overrides": {}}
+    files, settings = {"wide": {}, "tall": {}}, {}
+
+    def fields(src, target, where):
+        for key, value in src.items():
+            if key in TEXT_FIELDS:
+                if isinstance(value, str):
+                    target[key] = value.replace("\r\n", "\n").strip()
+                else:
+                    problems.append(f"{where}{key} must be text")
+            elif key == "tags":
+                if isinstance(value, str):
+                    target[key] = tags_of(value)
+                elif isinstance(value, list) and all(isinstance(t, str) for t in value):
+                    target[key] = tags_of("\n".join(value))
+                else:
+                    problems.append(f"{where}tags must be a list of words")
+            elif where:
+                problems.append(f"{where}unknown key '{key}'")
+
+    fields({k: v for k, v in data.items() if k in TEXT_FIELDS + ("tags",)}, post, "")
+    for key in data:
+        if key not in JSON_KEYS:
+            problems.append(f"Unknown key '{key}' was ignored")
+
+    overrides = data.get("overrides") or {}
+    if not isinstance(overrides, dict):
+        problems.append("overrides must be an object")
+        overrides = {}
+    for name, body in overrides.items():
+        key = PLATFORM_KEYS.get(norm(str(name)).replace("_", " "))
+        if not key or not isinstance(body, dict):
+            problems.append(f"overrides: unknown platform '{name}' (use {', '.join(OVERRIDE_KEYS)})")
+            continue
+        post["overrides"][key] = {}
+        fields(body, post["overrides"][key], f"overrides.{key}: ")
+
+    given = data.get("files") or {}
+    if not isinstance(given, dict):
+        problems.append("files must be an object")
+        given = {}
+    for shape, slot in given.items():
+        if shape not in files or not isinstance(slot, dict):
+            problems.append(f"files: unknown shape '{shape}' (use wide, tall)")
+            continue
+        for kind, value in slot.items():
+            if kind not in ("video", "srt", "thumbnail"):
+                problems.append(f"files.{shape}: unknown key '{kind}'")
+            elif isinstance(value, str) and value.strip():
+                files[shape][kind] = resolve(value.strip(), base_dir)
+                if not os.path.isfile(files[shape][kind]):
+                    problems.append(f"Files: {shape} {kind} not found: {value}")
+
+    given = data.get("settings") or {}
+    if not isinstance(given, dict):
+        problems.append("settings must be an object")
+        given = {}
+    for key, value in given.items():
+        if key == "platforms":
+            names = re.split(r"[,\s]+", value) if isinstance(value, str) else value
+            settings["platforms"] = [norm(str(p)) for p in names or [] if str(p).strip()]
+            bad = [p for p in settings["platforms"] if p not in PLATFORMS]
+            if bad:
+                problems.append(f"Settings: unknown platform {', '.join(bad)}")
+        elif key in ("language", "visibility"):
+            if value:
+                settings[key] = norm(str(value))
+        else:
+            problems.append(f"Settings: unknown key '{key}'")
+
+    return finish(post, files, settings, problems)
+
+
+def finish(post, files, settings, problems):
+    if settings.get("language"):
+        post["language"] = settings["language"]
+    post["overrides"] = {k: v for k, v in post["overrides"].items() if v}
+    if not post["title"]:
+        problems.append("No title")
+    if not post["description"]:
+        problems.append("No description text")
+    files = {s: f for s, f in files.items() if f}
+    return {"structured": True, "post": post, "files": files, "settings": settings, "problems": problems}
+
+
 def parse(text, base_dir="."):
+    if text.lstrip().startswith("{"):
+        try:
+            data = json.loads(text)
+        except ValueError:
+            data = None
+        if isinstance(data, dict) and data.get("video_poster") == 1:
+            return parse_json(data, base_dir)
+        return {"structured": False}
     if not MARKER.search(text):
         return {"structured": False}
     text = MARKER.sub("", text.replace("\r\n", "\n"))
@@ -96,8 +203,7 @@ def parse(text, base_dir="."):
                 for key, value in pairs_of(body).items():
                     if key in FILE_KEYS:
                         shape, kind = FILE_KEYS[key]
-                        path = value if os.path.isabs(os.path.expanduser(value)) else os.path.join(base_dir, value)
-                        files[shape][kind] = os.path.abspath(os.path.expanduser(path))
+                        files[shape][kind] = resolve(value, base_dir)
                         if not os.path.isfile(files[shape][kind]):
                             problems.append(f"Files: {key} not found: {value}")
                     else:
@@ -107,7 +213,7 @@ def parse(text, base_dir="."):
                 for key, value in pairs_of(body).items():
                     if key == "platforms":
                         settings["platforms"] = [norm(p) for p in re.split(r"[,\s]+", value) if p]
-                        bad = [p for p in settings["platforms"] if p not in ("youtube", "facebook", "tiktok", "linkedin")]
+                        bad = [p for p in settings["platforms"] if p not in PLATFORMS]
                         if bad:
                             problems.append(f"Settings: unknown platform {', '.join(bad)}")
                     elif key in ("language", "visibility"):
@@ -123,15 +229,7 @@ def parse(text, base_dir="."):
             else:
                 setfield(post["overrides"][section], FIELD_KEYS[h], body)
 
-    if settings.get("language"):
-        post["language"] = settings["language"]
-    post["overrides"] = {k: v for k, v in post["overrides"].items() if v}
-    if not post["title"]:
-        problems.append("No '# Title' line")
-    if not post["description"]:
-        problems.append("No description text under the title")
-    files = {s: f for s, f in files.items() if f}
-    return {"structured": True, "post": post, "files": files, "settings": settings, "problems": problems}
+    return finish(post, files, settings, problems)
 
 
 def main():

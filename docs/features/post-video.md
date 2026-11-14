@@ -12,7 +12,7 @@ The user picks videos, SRT files and a description on a local page, checks every
 | SRT cleaner | `skills/post-video/scripts/check_srt.py` | UTF-8, numbering, time format, order; Facebook's `name.<locale>.srt` copy |
 | Attach helper | `skills/post-video/scripts/attach.py`, `references/attach.md` | Gets a file of any size into a site's file input: parts under 10 MB go through the browser tool, the page joins and verifies them (SHA-256) |
 | Folder scan | `skills/post-video/scripts/scan.py` | Finds videos (by shape), SRT, thumbnails and the description file in a folder → `prefill.json` for `form.py start --prefill`; unsure choices become hints on the form |
-| Structure parser | `skills/post-video/scripts/parse_post.py` | Reads a description file in the documented structure into `post.json` word for word |
+| Structure parser | `skills/post-video/scripts/parse_post.py` | Reads a description file in the documented structure, Markdown (`<!-- video-poster: v1 -->`) or JSON (`"video_poster": 1`), into `post.json` word for word |
 | Structure spec | `skills/description-file/SKILL.md` | The structure, written for AIs that generate the file; its example and heading list are parsed in the tests |
 | Uploader agent | `agents/uploader.md` | One per upload, on Sonnet, all in parallel, each in its own Chrome tab; returns status, link and lessons; returns `needs_user` instead of asking |
 | Learned notes | `skills/post-video/scripts/learn.py` → `~/.video-poster/learned/<platform>.md` | The latest instructions and errors per site, rewritten (never appended) by the main session after a run, at most 40 lines; pasted into the next run's uploader briefs |

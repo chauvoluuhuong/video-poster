@@ -1,4 +1,5 @@
 """parse_post.py reads the documented structure exactly; scan.py fills the form from a folder."""
+import json
 import os
 import re
 import struct
@@ -53,6 +54,32 @@ class ParsePost(unittest.TestCase):
         self.assertEqual(len(res["problems"]), 3)  # unknown section, stray ###, unknown platform
         self.assertEqual(res["post"]["description"], "d")
 
+    def json_example(self):
+        with open(os.path.join(ROOT, "skills", "description-file", "SKILL.md"), encoding="utf-8") as f:
+            return f.read().split("## The same file as JSON")[1].split("```json\n")[1].split("\n```")[0]
+
+    def test_json_form_reads_the_same_as_markdown(self):
+        md = parse_post.parse(self.example(), "/nowhere")
+        js = parse_post.parse(self.json_example(), "/nowhere")
+        self.assertTrue(js["structured"])
+        self.assertTrue(all(p.startswith("Files:") for p in js["problems"]), js["problems"])
+        self.assertEqual(js["post"], md["post"])
+        self.assertEqual(js["files"], md["files"])
+        self.assertEqual(js["settings"], md["settings"])
+
+    def test_json_problems_and_other_json(self):
+        self.assertEqual(parse_post.parse('{"name": "package"}'), {"structured": False})
+        self.assertEqual(parse_post.parse('{"video_poster": 1,'), {"structured": False})
+        res = parse_post.parse(json.dumps({
+            "video_poster": 1, "title": "T", "description": "d\r\nline", "tags": "#a, b", "notes": "x",
+            "overrides": {"YouTube Short": {"title": "S", "cover": "x"}, "myspace": {}},
+            "files": {"square": {}, "wide": {"poster": "x"}}, "settings": {"platforms": "youtube, myspace", "speed": 2}}))
+        self.assertEqual(len(res["problems"]), 7, res["problems"])
+        self.assertEqual(res["post"]["description"], "d\nline")
+        self.assertEqual(res["post"]["tags"], ["a", "b"])
+        self.assertEqual(res["post"]["overrides"], {"youtube_short": {"title": "S"}})
+        self.assertIn("No title", parse_post.parse('{"video_poster": 1, "description": "d"}')["problems"])
+
     def test_hashtag_style_tags(self):
         res = parse_post.parse("<!-- video-poster: v1 -->\n# T\nd\n## Tags\n#AI #AIAgent #ClaudeCode\n")
         self.assertEqual(res["post"]["tags"], ["AI", "AIAgent", "ClaudeCode"])
@@ -100,6 +127,25 @@ class Scan(unittest.TestCase):
         self.assertEqual(sorted(res["platforms"]), ["tiktok", "youtube"])
         self.assertEqual(res["visibility"], "private")
         self.assertTrue(any("gone.srt" in h for h in res["hints"]))
+
+    def test_json_file_decides_and_other_json_is_left_alone(self):
+        wide = self.touch("out-16x9.mp4")
+        srt = self.touch("out.srt")
+        self.touch("package.json", '{"name": "x"}')
+        body = {"video_poster": 1, "title": "T", "description": "d", "files": {"wide": {"video": "out-16x9.mp4", "srt": "out.srt"}},
+                "settings": {"platforms": ["youtube"], "language": "en"}}
+        self.touch("post-short.json", json.dumps(body), age=50)
+        desc = self.touch("post-full.json", json.dumps(body))
+        res = scan.scan([self.d])
+        self.assertEqual(res["description_file"], desc)
+        self.assertEqual(res["videos"]["wide"], {"video": wide, "srt": srt})
+        self.assertEqual((list(res["platforms"]), res["language"]), (["youtube"], "en"))
+        self.assertTrue(any("post-short.json" in h for h in res["hints"]))
+        only = scan.scan([os.path.join(self.d, "post-short.json")])  # a file given by itself brings its videos along
+        self.assertEqual(only["videos"]["wide"]["video"], wide)
+        self.assertEqual(only["hints"], [])
+        os.remove(desc), os.remove(os.path.join(self.d, "post-short.json"))
+        self.assertNotIn("description_file", scan.scan([self.d]))  # package.json is never taken as the description
 
     def test_nothing_found(self):
         res = scan.scan([self.d])
