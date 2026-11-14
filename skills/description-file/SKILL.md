@@ -1,11 +1,11 @@
 ---
 name: description-file
-description: The exact structure of the description file (post file) that the video-poster plugin reads when it posts a video to YouTube, Facebook, TikTok and LinkedIn. Read this whenever you write, generate or convert the upload text for a video (title, description, tags, first comment, per-platform versions, which files to post) and it will be posted with video-poster, or when someone asks what format that file needs — including "viết file đăng bài", "nội dung đăng bài", "title, mô tả, tags cho video". Follow it exactly so the file is read as is, with no rewriting.
+description: The exact structure of the description file (post file, Markdown or JSON) that the video-poster plugin reads when it posts a video to YouTube, Facebook, TikTok and LinkedIn. Read this whenever you write, generate or convert the upload text for a video (title, description, tags, first comment, per-platform versions, which files to post) and it will be posted with video-poster, or when someone asks what format that file needs — including "viết file đăng bài", "nội dung đăng bài", "title, mô tả, tags cho video". Follow it exactly so the file is read as is, with no rewriting.
 ---
 
 # The video-poster description file
 
-One Markdown file, saved next to the video files (suggested name: `post.md`). When it follows this structure, video-poster reads it exactly and changes nothing. A file that does not follow it still works, but then the text is rewritten by an AI at posting time, which is what this structure avoids.
+One file, saved next to the video files: Markdown (suggested name `post.md`) when a person or an AI writes it, or JSON (`post.json`, see **The same file as JSON**) when a script writes it. When it follows this structure, video-poster reads it exactly and changes nothing. A file that does not follow it still works, but then the text is rewritten by an AI at posting time, which is what this structure avoids.
 
 ## Rules
 
@@ -89,6 +89,82 @@ On Facebook, TikTok and LinkedIn the title becomes the first line of the text. W
 - **Facebook / LinkedIn**: the hook in the first line; a link in the text reduces reach, so many authors put it in `### First comment`.
 - A different cut for a platform (for example a 0:53 vertical cut for TikTok) cannot be expressed here: `## Files` has one wide and one tall video. Make a second description file for the other cut.
 
+## The same file as JSON
+
+For a tool or script that generates the file, the same content can be one JSON object. It is read exactly like the Markdown form: same parts, same limits, same plain-text rules for the content.
+
+- `"video_poster": 1` is the marker. A `.json` file without it is not treated as a description file.
+- `title` and `description` are required; `tags` is a list of plain words; `first_comment` is optional.
+- `overrides`: keys `youtube`, `youtube_short`, `facebook`, `facebook_reel`, `tiktok`, `linkedin`; each may set `title`, `description`, `tags`, `first_comment`.
+- `files`: `wide` (16:9) and `tall` (9:16), each with `video`, `srt`, `thumbnail`; paths relative to the JSON file, or full paths.
+- `settings`: `platforms` (a list), `language`, `visibility`.
+- Any other key is ignored and reported as a problem. Notes for humans go in another file.
+
+The example at the end of this page, as JSON:
+
+```json
+{
+  "video_poster": 1,
+  "title": "Đừng cầm tay chỉ việc cho AI: xây môi trường để nó tự làm | Chorus 2.0",
+  "description": "Đừng cầm tay chỉ việc cho AI nữa. Chorus 2.0 cho bạn xây môi trường để AI tự lập kế hoạch, tự chia việc và học từ sai lầm.\nTải Chorus: https://example.com",
+  "tags": [
+    "Chorus",
+    "AI agent",
+    "Claude Code",
+    "lập trình với AI"
+  ],
+  "files": {
+    "wide": {
+      "video": "chorus-2-ngang.mp4",
+      "srt": "chorus-2.srt",
+      "thumbnail": "thumbnail-ngang.png"
+    },
+    "tall": {
+      "video": "chorus-2-doc.mp4",
+      "thumbnail": "thumbnail-doc.png"
+    }
+  },
+  "settings": {
+    "platforms": [
+      "youtube",
+      "tiktok",
+      "linkedin"
+    ],
+    "language": "vi"
+  },
+  "overrides": {
+    "youtube": {
+      "description": "Đừng cầm tay chỉ việc cho AI nữa. Chorus 2.0 cho bạn xây môi trường để AI tự lập kế hoạch, tự chia việc và học từ sai lầm.\nTải Chorus: https://example.com\n\n0:00 Mở đầu\n0:08 Bản 1: gom về một nơi\n0:19 Bản 2: xây môi trường cho AI"
+    },
+    "youtube_short": {
+      "title": "Đừng cầm tay chỉ việc cho AI #Shorts",
+      "description": "Xây môi trường để AI tự làm, tự học. Chorus 2.0: https://example.com"
+    },
+    "tiktok": {
+      "title": "Đừng cầm tay chỉ việc cho AI nữa.",
+      "description": "Đừng cầm tay chỉ việc cho AI nữa. Xây môi trường để nó tự làm, tự học. Link ở bình luận.",
+      "tags": [
+        "AI",
+        "AIAgent",
+        "ClaudeCode",
+        "LapTrinh"
+      ],
+      "first_comment": "Tải Chorus: https://example.com"
+    },
+    "linkedin": {
+      "title": "Làm việc với AI coding agent",
+      "description": "Làm việc với AI coding agent, phần mệt nhất không phải là viết prompt. Đó là phải đứng cạnh nó.\n\n• Teammate: mỗi agent có bộ skill và nhiệm vụ riêng.\n• Planner: chia việc thành từng bước, bạn chỉ bấm duyệt.",
+      "tags": [
+        "AIAgents",
+        "DeveloperTools",
+        "OpenSource"
+      ],
+      "first_comment": "Tải Chorus: https://example.com"
+    }
+  }
+}
+```
+
 ## Check the file
 
 If the video-poster plugin is installed, this prints what will be read and lists problems:
@@ -96,6 +172,8 @@ If the video-poster plugin is installed, this prints what will be read and lists
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/post-video/scripts/parse_post.py" post.md
 ```
+
+It takes the JSON form the same way.
 
 `"problems": []` and `"structured": true` mean the file is read exactly as written.
 

@@ -18,7 +18,7 @@ Two rules that hold whatever else happens:
 
 Always start here. All four platforms are ticked by default; the user unticks what they do not want.
 
-**When the user named a folder or files** (in the command's arguments or in their message), find the files first, so the form opens with the Files screen already filled in. The user still looks at it and submits; never skip the Files screen.
+**When the user named a folder or files** (in the command's arguments or in their message; a description file alone counts, for example `post-full.json` from the make-video skill, since it names its videos), find the files first, so the form opens with the Files screen already filled in. The user still looks at it and submits; never skip the Files screen.
 
 ```bash
 python3 "$S/scan.py" "/path/to/folder" --out ~/.video-poster/prefill.json
@@ -59,7 +59,7 @@ First try to read the description file exactly:
 python3 "$S/parse_post.py" "<description_file>" --out "$W/post.json"
 ```
 
-`"structured": true` means the file follows the video-poster structure (the `description-file` skill of this plugin describes it): `post.json` is written from it word for word. Do not rewrite anything; only add its `problems`, if any, to `notes` in `post.json`, and go to step 3. Pasted `description_text` together with a structured file: treat the pasted text as an instruction for what to change in `post.json`.
+`"structured": true` means the file follows the video-poster structure, in Markdown or in JSON (the `description-file` skill of this plugin describes both): `post.json` is written from it word for word, with no AI rewriting. Do not rewrite anything; only add its `problems`, if any, to `notes` in `post.json`, and go to step 3. Pasted `description_text` together with a structured file: treat the pasted text as an instruction for what to change in `post.json`.
 
 `"structured": false` means a free-form file: read `description_file` and `description_text` (when both are given, the pasted text is the newer word) and write `post.json` yourself as described below. The text is often not ready: a pasted README with sections per platform, notes with no title, hashtags mixed into sentences, markdown, several languages. Make one clean post from it and write `$W/post.json`:
 
