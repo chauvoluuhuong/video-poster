@@ -5,7 +5,8 @@ Usage:  scan.py PATH [PATH ...] --out prefill.json
 
 PATH is a folder or a file. The result fills the form's Files screen; the user still checks it
 and submits. Rules:
-  - A description file in the video-poster structure with a "## Files" section decides everything it names.
+  - A description file in the video-poster structure (Markdown or JSON) that names its files decides
+    everything it names.
   - Otherwise: videos are sorted into 16:9 and 9:16 by their real size (ffprobe), or by words in the
     name when ffprobe is missing; images the same way (PNG/JPEG size is read from the file);
     an SRT goes to the video whose name it resembles most; the description file is the .md/.txt file.
@@ -103,15 +104,19 @@ def scan(paths):
     # description file: a structured one wins, then a telling name, then the only text file
     texts = [f for f in files if f.lower().endswith(TEXT) and not os.path.basename(f).lower().startswith("readme")]
     structured = None
-    for f in newest(texts):
+    for f in newest(texts + [f for f in files if f.lower().endswith(".json")]):  # .json only when it is structured
         try:
             with open(f, encoding="utf-8-sig") as fh:
                 res = parse_post.parse(fh.read(), os.path.dirname(f))
         except (OSError, UnicodeDecodeError):
             continue
-        if res["structured"]:
-            structured, out["description_file"] = res, f
+        if not res["structured"]:
+            continue
+        if structured:
+            hints.append(f"Description: used {os.path.basename(out['description_file'])}; also found {os.path.basename(f)}"
+                         " (give that file instead of the folder to post it)")
             break
+        structured, out["description_file"] = res, f
     if not structured and texts:
         named = [f for f in texts if any(w in os.path.basename(f).lower() for w in DESC_WORDS)]
         pick = newest(named or texts)
