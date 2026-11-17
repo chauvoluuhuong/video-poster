@@ -35,6 +35,8 @@ Needs: the Claude in Chrome extension, connected, with you logged in to each pla
 
 The form, the check screen, the text and SRT clean-up are covered by automatic tests. The uploads themselves are driven by written steps per site (`skills/post-video/references/`) and are **not tested automatically**: the sites change, so the first post on each platform may need a correction. Please open an issue with what the page showed.
 
+Tick **Made with AI** on the form when the video has realistic AI-made voice, people or footage: the plugin then sets YouTube's "altered or synthetic content", TikTok's "AI-generated content" and Facebook's AI label (LinkedIn has none). It starts off for every video, can be changed per upload on the check screen, and a description file can set it (`- AI label: yes` under Settings).
+
 Each upload can also get a **first comment** (for example the download link), added and pinned where the site allows right after the video is posted.
 
 ## The description file

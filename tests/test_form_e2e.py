@@ -124,6 +124,8 @@ class FormFlow(unittest.TestCase):
         self.assertIsNone(by["tiktok-tall"]["srt_file"])
         self.assertIn("Check me", pv["warnings"])
         self.assertTrue(next(f for f in by["youtube-wide"]["fields"] if f["key"] == "tags")["by_claude"])
+        self.assertFalse(any(p["ai_label"] for p in pv["posts"]))  # not ticked on the form
+        self.assertIn("synthetic", by["youtube-wide"]["ai_info"]["off"])
 
         self.cli("preview", preview)
         self.assertEqual(self.http("/api/state")[1]["phase"], "preview")
@@ -151,6 +153,38 @@ class FormFlow(unittest.TestCase):
         self.assertEqual(state["progress"]["youtube-wide"], {"status": "posted", "link": "https://youtu.be/x"})
         self.cli("done")
         self.assertEqual(self.http("/api/state")[1]["phase"], "done")
+
+    def test_ai_label(self):
+        self.assertEqual(self.http("/api/submit", self.form(ai_label=True))[0], 200)
+        self.assertIs(self.cli("wait", "submit")["ai_label"], True)
+        post = os.path.join(self.state, "post.json")
+        with open(post, "w", encoding="utf-8") as f:
+            json.dump({"title": "T", "description": "d"}, f)
+        preview = os.path.join(self.state, "preview.json")
+        subprocess.run([sys.executable, os.path.join(S, "prepare.py"), os.path.join(self.state, "submit.json"), post,
+                        "--out", preview], check=True, capture_output=True, env=self.env)
+        with open(preview, encoding="utf-8") as f:
+            pv = json.load(f)
+        self.assertTrue(all(p["ai_label"] for p in pv["posts"]))
+        self.assertTrue(any("LinkedIn" in w and "AI label" in w for w in pv["warnings"]))
+        self.cli("preview", preview)
+        # the user unticks it for TikTok only; a refine keeps that choice
+        self.http("/api/decision", {"action": "refine", "instruction": "shorter", "posts": [{"id": "tiktok-tall", "fields": {}, "ai_label": False}]})
+        refine = self.cli("wait", "decision")
+        self.cli("preview", refine["file"])
+        self.assertEqual(self.http("/api/decision", {"action": "post", "posts": []})[0], 200)
+        final = {p["id"]: p["ai_label"] for p in self.cli("wait", "decision")["posts"]}
+        self.assertEqual(final, {"youtube-wide": True, "youtube-tall": True, "facebook-wide": True,
+                                 "tiktok-tall": False, "linkedin-wide": True})
+
+    def test_ai_label_is_not_remembered(self):
+        self.http("/api/submit", self.form(ai_label=True))
+        self.cli("wait", "submit")
+        self.cli("stop")
+        self.srv = self.cli("start", "--no-open")
+        state = self.http("/api/state")[1]
+        self.assertEqual(state["form"].get("visibility"), "public")  # remembered
+        self.assertNotIn("ai_label", state["form"])  # a disclosure: chosen again for every video
 
     def test_back_and_cancel(self):
         self.http("/api/submit", self.form())

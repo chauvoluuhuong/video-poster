@@ -179,6 +179,7 @@ def validate_form(form):
 
     clean["visibility"] = form.get("visibility") if form.get("visibility") in ("public", "private", "unlisted") else "public"
     clean["language"] = (form.get("language") or "vi").strip()[:10]
+    clean["ai_label"] = form.get("ai_label") is True
     return clean, errors
 
 
@@ -187,6 +188,7 @@ class State:
         self.dir, self.token = state_dir, token
         self.phase = "form"  # form | preparing | preview | posting | done | cancelled
         self.form = read_json(os.path.join(HOME_DIR, "last_form.json"), {})
+        self.form.pop("ai_label", None)  # a disclosure: never carried over from the last video
         prefill = read_json(self.path("prefill.json"), {})
         self.hints = prefill.pop("hints", [])
         self.form.update(prefill)  # files found for the user; they still check and submit the form
@@ -214,8 +216,10 @@ def merge_decision(preview, edits):
     """Apply the user's edits to the previewed posts. Returns (posts, errors)."""
     posts, errors = [], []
     by_id = {e.get("id"): e.get("fields") or {} for e in edits or []}
+    extra = {e.get("id"): e for e in edits or []}
     for post in preview.get("posts", []):
         post = json.loads(json.dumps(post))
+        edit = extra.get(post["id"], {})
         for field in post.get("fields", []):
             if field["key"] in by_id.get(post["id"], {}):
                 field["value"] = str(by_id[post["id"]][field["key"]]).replace("\r\n", "\n").strip()
@@ -224,6 +228,9 @@ def merge_decision(preview, edits):
                 errors.append(f"{post['platform']} {field['label']}: {len(field['value'])} characters, limit {limit}")
             if field.get("required") and not field["value"]:
                 errors.append(f"{post['platform']} {field['label']} is empty")
+        flag = edit.get("ai_label")
+        if isinstance(flag, bool):
+            post["ai_label"] = flag
         posts.append(post)
     return posts, errors
 

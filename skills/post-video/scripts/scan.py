@@ -133,6 +133,8 @@ def scan(paths):
         for key in ("visibility", "language"):
             if s.get(key):
                 out[key] = s[key]
+        if "ai_label" in s:
+            out["ai_label"] = s["ai_label"]
         hints += [f"{os.path.basename(out['description_file'])}: {p}" for p in structured["problems"]]
 
     def fill(kind, exts, sizer, label):

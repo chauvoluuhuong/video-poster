@@ -35,7 +35,7 @@ sequenceDiagram
   C->>F: progress per upload (uploads run in Claude in Chrome)
 ```
 
-State for one run is in `~/.video-poster/current/`. `~/.video-poster/last_form.json` remembers the dropdown choices, visibility and language.
+State for one run is in `~/.video-poster/current/`. `~/.video-poster/last_form.json` remembers the dropdown choices, visibility and language (never the AI label).
 
 Dropping a file on the page: a browser tells a page only the file's name, size and date, never its folder. `/api/locate` finds the path from those (folders of files already chosen, then Spotlight, then a shallow walk of the usual folders). A small text file that cannot be found is copied into the run folder (`/api/drop`).
 
@@ -60,6 +60,9 @@ The user writes an instruction and presses Apply with Claude. The server saves t
 
 ## Attaching files
 The browser tool's own file attach takes at most 10 MB per call and only files in the session's folders. `attach.py split` writes parts of 8 MB into `.video-poster-parts/` in the session folder; a temporary file input on the page collects them; `finish_js` builds one `File`, checks size and SHA-256, and sets it on the site's input (or drops it on a drop zone). No network request leaves the page, so a site's content security policy does not block it. Checked by hand on 2026-11-11 with a 21 MB video on a tiktok.com page.
+
+## AI label
+"Made with AI" on the Files screen → `ai_label` in `submit.json` → `ai_label` on every upload, shown on the Check screen with a checkbox per upload and what it sets on that site (`AI_INFO` in `prepare.py`). Uploaders set YouTube's "altered or synthetic content", TikTok's "AI-generated content" and Facebook's AI label from it and never ask; LinkedIn has none, so that post goes out without one and the row notes it. It starts off every run (not kept in `last_form.json`); a description file's `AI label: yes` / `"ai_label": true` pre-fills it. Shipped: v0.1.6.
 
 ## Known limits
 - Attaching was proven on a page with a plain file input; each site's real upload input is still unproven.
