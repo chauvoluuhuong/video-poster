@@ -12,7 +12,7 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
    - Only if the user asked in chat for burned-in captions, the video you attach in step 1 must be a burned copy:
      `ffmpeg -i video.mp4 -vf "subtitles=captions.clean.srt:force_style='FontSize=14,Outline=2,MarginV=60'" -c:a copy video.captioned.mp4`
      (needs an ffmpeg built with libass; show one frame to the user before uploading).
-6. "AI-generated content" switch, "Disclose post content" (brand or paid): leave off unless the user's text says the video is AI-made or sponsored; then ask.
+6. **Show more** → "AI-generated content" switch ← `ai_label`: on when it is true, off when it is false (the user chose it; do not ask). Turning it on may open a confirm dialog: confirm. "Disclose post content" (brand or paid): leave off unless the user's text says the video is sponsored; then ask.
 7. Wait for the copyright / content check under the form if it runs. An issue → stop and tell the user.
 8. Final button: **Post** (or **Schedule**, or **Save draft** if they asked). Press only with the user's yes.
 9. After posting, the page goes to the post list in TikTok Studio. Open the newest post and copy its link for the report; if it is still "processing" and has no link yet, say so.

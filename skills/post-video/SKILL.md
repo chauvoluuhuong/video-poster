@@ -47,7 +47,7 @@ Results of `wait submit`: the form (below); `{"waiting": true}` after the timeou
 
 If the user writes in chat while a wait is running ("continue", "I submitted", "it is stuck"), do not start a second form: run `form.py wait submit --timeout 5` (or `wait decision`) in the foreground to read where things stand and go on from there.
 
-The result is the form: `videos.wide` (16:9) and `videos.tall` (9:16), each with `video`, `srt` and `thumbnail`; `description_file` and/or `description_text`; `platforms` with which video each one gets (`wide`, `tall`, `both`); `visibility`; `language`.
+The result is the form: `videos.wide` (16:9) and `videos.tall` (9:16), each with `video`, `srt` and `thumbnail`; `description_file` and/or `description_text`; `platforms` with which video each one gets (`wide`, `tall`, `both`); `visibility`; `language`; `ai_label` (true when the user ticked "Made with AI"; off at the start of every run unless the description file's Settings say `AI label: yes`).
 
 If the form cannot open (no browser, the command fails), fall back to asking in chat for the same things, then continue from step 2 with a `submit.json` you write yourself.
 
@@ -115,7 +115,7 @@ Run it in the background like the first wait, and tell the user in one line that
   If the instruction is unclear, or asks for something a text change cannot do (another video, another platform), do not guess: put one line saying so first in `warnings` (for another file or platform: "press Back to change files"), push the file unchanged, and wait again. Refine can happen any number of times; nothing is posted by it.
 - `{"action": "back"}`: they went back to the form. Go to `wait submit` in step 1 and redo steps 2–3.
 - `{"action": "cancel"}`: `form.py stop`, say nothing was posted.
-- `{"action": "post", "posts": [...]}`: the approval. `posts` is the final list, with the user's edits. Upload exactly these: for each one `video`, `thumbnail` (may be null), `fields` (by `key`: `title`, `description`, `tags`, `text`, `caption`), `srt_file` (may be null), `visibility`, `key` (platform), `shape` (`wide` / `tall`), `id`.
+- `{"action": "post", "posts": [...]}`: the approval. `posts` is the final list, with the user's edits. Upload exactly these: for each one `video`, `thumbnail` (may be null), `fields` (by `key`: `title`, `description`, `tags`, `text`, `caption`), `srt_file` (may be null), `visibility`, `ai_label` (the user's choice for this upload; they can change it per upload on the Check screen), `key` (platform), `shape` (`wide` / `tall`), `id`.
 
 Where captions go:
 
@@ -193,4 +193,4 @@ They are in `references/uploading.md` (how to attach files, fill text, when to s
 
 ## 6. Report
 
-A short table in chat: upload, result (posted / failed / skipped), link to the post if the site gave one, captions attached or not, thumbnail set or not, first comment added or not. For a failure, say at which step and what the page said; do not retry a publish more than once, a double post is worse than a missing one. The files in `~/.video-poster/current/` stay until the next run, so a failed upload can be redone from `final.json`.
+A short table in chat: upload, result (posted / failed / skipped), link to the post if the site gave one, captions attached or not, thumbnail set or not, AI label on / off / not offered, first comment added or not. For a failure, say at which step and what the page said; do not retry a publish more than once, a double post is worse than a missing one. The files in `~/.video-poster/current/` stay until the next run, so a failed upload can be redone from `final.json`.

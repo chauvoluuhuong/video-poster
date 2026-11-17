@@ -34,6 +34,12 @@ VISIBILITY = {
     "tiktok": {"public": "Everyone", "private": "Only you", "unlisted": "Only you"},
     "linkedin": {"public": "Anyone", "private": "Connections only", "unlisted": "Connections only"},
 }
+AI_INFO = {  # what the AI label sets on each site, when on / off
+    "youtube": {"on": "“Altered or synthetic content” → Yes", "off": "“Altered or synthetic content” → No"},
+    "tiktok": {"on": "“AI-generated content” switch on", "off": "“AI-generated content” switch off"},
+    "facebook": {"on": "AI label (“AI info”) where the composer offers it", "off": "no AI label"},
+    "linkedin": {"on": "LinkedIn has no AI label on the web: posted without one", "off": "no AI label"},
+}
 LOCALES = {"vi": "vi_VN", "en": "en_US", "ja": "ja_JP", "ko": "ko_KR", "zh": "zh_CN", "fr": "fr_FR",
            "de": "de_DE", "es": "es_ES", "pt": "pt_BR", "id": "id_ID", "th": "th_TH"}
 LIM = build_post.LIMITS
@@ -179,8 +185,11 @@ def prepare(form, post, work):
                 "meta": meta, "video": v["video"], "srt_file": srt_file, "language": lang,
                 "captions": captions, "thumbnail": thumb, "thumbnail_info": thumbnail_info,
                 "fields": fields_for(platform, built, by_claude),
+                "ai_label": form.get("ai_label") is True, "ai_info": AI_INFO[platform],
             })
 
+    if form.get("ai_label") is True and any(p["key"] == "linkedin" for p in posts):
+        warnings.append("AI label: LinkedIn has no such option on the web, so the LinkedIn post goes out without one.")
     if form.get("visibility") == "unlisted" and any(p["key"] != "youtube" for p in posts):
         warnings.append("Unlisted exists only on YouTube: the other platforms post as private / connections only.")
     if form.get("visibility") == "private" and any(p["key"] == "linkedin" for p in posts):

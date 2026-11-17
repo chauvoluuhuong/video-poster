@@ -62,6 +62,18 @@ TEXT_FIELDS = ("title", "description", "first_comment")
 JSON_KEYS = ("video_poster", "title", "description", "tags", "first_comment", "overrides", "files", "settings")
 
 
+YES = {"yes", "true", "on", "1", "có", "co"}
+NO = {"no", "false", "off", "0", "không", "khong"}
+
+
+def yes_no(value):
+    """True / False for an AI label setting, None when it is neither."""
+    if isinstance(value, bool):
+        return value
+    v = norm(str(value))
+    return True if v in YES else False if v in NO else None
+
+
 def resolve(value, base_dir):
     path = os.path.expanduser(value)
     return os.path.abspath(path if os.path.isabs(path) else os.path.join(base_dir, path))
@@ -136,6 +148,11 @@ def parse_json(data, base_dir="."):
         elif key in ("language", "visibility"):
             if value:
                 settings[key] = norm(str(value))
+        elif key == "ai_label":
+            if yes_no(value) is None:
+                problems.append("Settings: ai_label must be true or false")
+            else:
+                settings["ai_label"] = yes_no(value)
         else:
             problems.append(f"Settings: unknown key '{key}'")
 
@@ -218,6 +235,11 @@ def parse(text, base_dir="."):
                             problems.append(f"Settings: unknown platform {', '.join(bad)}")
                     elif key in ("language", "visibility"):
                         settings[key] = norm(value)
+                    elif key == "ai label":
+                        if yes_no(value) is None:
+                            problems.append("Settings: AI label must be yes or no")
+                        else:
+                            settings["ai_label"] = yes_no(value)
                     else:
                         problems.append(f"Settings: unknown line '{key}'")
             else:

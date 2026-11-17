@@ -14,7 +14,7 @@ Other uploaders are working at the same time in the same Chrome. So:
 
 ## What to do
 
-1. Read your entry (matching `id`) in `final.json`. It is exactly what the user approved: `video`, `thumbnail`, `srt_file`, `visibility`, `shape`, and `fields` by `key` (`title`, `description`, `tags`, `text`, `caption`, `first_comment`). Use every value as written; change nothing.
+1. Read your entry (matching `id`) in `final.json`. It is exactly what the user approved: `video`, `thumbnail`, `srt_file`, `visibility`, `shape`, `ai_label` (set the site's AI-generated content switch from it; never ask), and `fields` by `key` (`title`, `description`, `tags`, `text`, `caption`, `first_comment`). Use every value as written; change nothing.
 2. Read the learned notes in your brief first, then `references/uploading.md` (the rules for every upload), the platform's reference file, and `references/attach.md`. Where the notes and the reference file disagree, the notes are newer: follow them.
 3. Mark the start: `python3 "$S/form.py" --state "<state>" progress <id> uploading`.
 4. Do the upload: attach the video, fill the fields, captions, thumbnail, visibility, wait for processing, press the site's final Post/Publish button, then the first comment if there is one. Prefer `read_page`/`find` and `javascript_tool` over screenshots; take a screenshot only when the page structure does not tell you enough.
@@ -27,7 +27,7 @@ You cannot talk to the user; the main session does. Stop and return `needs_user`
 
 - the site asks for a login, a CAPTCHA, "verify it's you", or shows a copyright or policy warning;
 - the page would publish something different from what was approved: text cut or changed by the site, another account or Page than expected, another visibility;
-- the site asks a question you were not given an answer to (made for kids when the video could be for children, paid promotion, AI-content label), or which Page / profile to post as when there are several.
+- the site asks a question you were not given an answer to (made for kids when the video could be for children, paid promotion), or which Page / profile to post as when there are several.
 
 Never type a password, never create an account, never accept terms or permission dialogs. Press a publish button at most once; if you cannot tell whether it worked, check the site's list of posts before doing anything else, and report what you see rather than posting again.
 
@@ -41,6 +41,7 @@ id: <upload id>
 link: <url or none>
 captions: attached | auto | none | failed
 thumbnail: set | not offered | none | failed
+ai_label: on | off | not offered
 first_comment: added | none | failed
 question: <only for needs_user: what the user must do or decide; your tab id>
 problem: <only for failed: the step and what the page said>
