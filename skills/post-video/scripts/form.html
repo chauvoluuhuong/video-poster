@@ -128,6 +128,10 @@ a{color:var(--accent)}
         <label for="language">Caption language</label>
         <select id="language"><option value="vi">Vietnamese (vi)</option><option value="en">English (en)</option></select>
       </div>
+      <div class="row" style="margin-top:10px">
+        <input type="checkbox" id="ai-label"><label for="ai-label">Made with AI: label it as AI-generated content</label>
+      </div>
+      <p class="hint">Tick it when the video has realistic AI-made voice, people or footage. You can change it per upload on the next step.</p>
     </section>
   </div>
 
@@ -188,7 +192,7 @@ function readForm(){
     videos: { wide: {video: $('wide-video').value, srt: $('wide-srt').value, thumbnail: $('wide-thumb').value},
               tall: {video: $('tall-video').value, srt: $('tall-srt').value, thumbnail: $('tall-thumb').value} },
     description_file: $('desc-file').value, description_text: $('desc-text').value,
-    platforms, visibility: $('visibility').value, language: $('language').value,
+    platforms, visibility: $('visibility').value, language: $('language').value, ai_label: $('ai-label').checked,
   };
 }
 function fillForm(f){
@@ -200,6 +204,7 @@ function fillForm(f){
   document.querySelectorAll('.path').forEach(i => { i.scrollLeft = i.scrollWidth; });
   if (f.choices) for (const p of PLATFORMS) if (f.choices[p]) $('ch-' + p).value = f.choices[p];
   if (f.visibility) $('visibility').value = f.visibility;
+  $('ai-label').checked = f.ai_label === true;
   if (f.language) { const s = $('language'); if (![...s.options].some(o => o.value === f.language)) s.append(el('option', {value: f.language}, f.language)); s.value = f.language; }
 }
 function countUploads(){
@@ -271,6 +276,14 @@ function renderPreview(pv){
       setTimeout(upd);
     }
     for (const line of [post.captions, post.thumbnail_info]) if (line) sec.append(el('div', {class: 'cap ' + (line.ok ? 'ok' : 'no')}, (line.ok ? '✓ ' : '⚠ ') + line.text));
+    if (post.ai_info) {
+      const box = el('input', {type: 'checkbox', id: 'ai-' + post.id, checked: !!post.ai_label});
+      box.dataset.ai = '1';
+      const what = el('span', {class: 'hint', style: 'margin:0'});
+      const upd = () => { what.textContent = '· ' + (box.checked ? post.ai_info.on : post.ai_info.off); };
+      box.addEventListener('change', upd); upd();
+      sec.append(el('div', {class: 'row cap', style: 'gap:6px'}, box, el('label', {htmlFor: 'ai-' + post.id}, 'AI label'), what));
+    }
     root.append(sec);
   }
   const box = el('textarea', {id: 'refine-text', rows: 2, placeholder: 'For example: make the TikTok caption shorter · use title option 2 on YouTube · add the Pro note to LinkedIn'});
@@ -291,6 +304,7 @@ function readEdits(){
   return [...document.querySelectorAll('#preview section[data-post]')].map(sec => ({
     id: sec.dataset.post,
     fields: Object.fromEntries([...sec.querySelectorAll('[data-key]')].map(i => [i.dataset.key, i.value])),
+    ...(sec.querySelector('[data-ai]') ? {ai_label: sec.querySelector('[data-ai]').checked} : {}),
   }));
 }
 

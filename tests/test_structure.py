@@ -37,6 +37,7 @@ class ParsePost(unittest.TestCase):
         self.assertEqual(post["overrides"]["tiktok"]["first_comment"], "Tải Chorus: https://example.com")
         self.assertEqual(post["language"], "vi")
         self.assertEqual(res["settings"]["platforms"], ["youtube", "tiktok", "linkedin"])
+        self.assertIs(res["settings"]["ai_label"], True)
         # and the builder accepts it: the TikTok caption is the given description, not title + description
         caption = build_post.build(post, "tiktok")["caption"]
         self.assertTrue(caption.startswith("Đừng cầm tay chỉ việc cho AI nữa. Xây môi trường"))
@@ -53,6 +54,18 @@ class ParsePost(unittest.TestCase):
         res = parse_post.parse("<!-- video-poster: v1 -->\n# T\nd\n## Notes\nx\n### Title\ny\n## Settings\n- Platforms: youtube, myspace\n")
         self.assertEqual(len(res["problems"]), 3)  # unknown section, stray ###, unknown platform
         self.assertEqual(res["post"]["description"], "d")
+
+    def test_ai_label_setting(self):
+        head = "<!-- video-poster: v1 -->\n# T\nd\n## Settings\n"
+        self.assertIs(parse_post.parse(head + "- AI label: No\n")["settings"]["ai_label"], False)
+        self.assertIs(parse_post.parse(head + "- AI label: có\n")["settings"]["ai_label"], True)
+        bad = parse_post.parse(head + "- AI label: maybe\n")
+        self.assertNotIn("ai_label", bad["settings"])
+        self.assertEqual(bad["problems"], ["Settings: AI label must be yes or no"])
+        js = {"video_poster": 1, "title": "T", "description": "d"}
+        self.assertIs(parse_post.parse(json.dumps(dict(js, settings={"ai_label": False})))["settings"]["ai_label"], False)
+        self.assertEqual(parse_post.parse(json.dumps(dict(js, settings={"ai_label": "sometimes"})))["problems"],
+                         ["Settings: ai_label must be true or false"])
 
     def json_example(self):
         with open(os.path.join(ROOT, "skills", "description-file", "SKILL.md"), encoding="utf-8") as f:
@@ -120,12 +133,13 @@ class Scan(unittest.TestCase):
         self.touch("a-ngang.mp4")
         chosen = self.touch("b-ngang.mp4", age=500)  # older, but named in the file
         desc = self.touch("post.md", "<!-- video-poster: v1 -->\n# T\nd\n## Files\n- Wide video: b-ngang.mp4\n- Wide SRT: gone.srt\n"
-                                     "## Settings\n- Platforms: youtube, tiktok\n- Visibility: private\n")
+                                     "## Settings\n- Platforms: youtube, tiktok\n- Visibility: private\n- AI label: yes\n")
         res = scan.scan([self.d])
         self.assertEqual(res["videos"]["wide"]["video"], chosen)
         self.assertEqual(res["description_file"], desc)
         self.assertEqual(sorted(res["platforms"]), ["tiktok", "youtube"])
         self.assertEqual(res["visibility"], "private")
+        self.assertIs(res["ai_label"], True)
         self.assertTrue(any("gone.srt" in h for h in res["hints"]))
 
     def test_json_file_decides_and_other_json_is_left_alone(self):

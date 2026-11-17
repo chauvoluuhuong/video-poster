@@ -19,6 +19,7 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 8. First comment (when `first_comment` is not empty): on the published post, **Comment**, paste the text, **Comment** / **Post**. Check that it is written as the same author (you or the company page) as the post.
 
 Notes
+- LinkedIn has no AI label to set on the web. When `ai_label` is true, post without one and report `--note "AI label not offered"`.
 - Limits: 15 minutes and 5 GB on the web. Longer → tell the user; do not cut the video unless asked.
 - Keep links where the user put them; do not move them to a comment unless asked.
 - Do not use "Rewrite with AI" or other suggestions the dialog offers; the text is already approved.

@@ -45,6 +45,7 @@ Text posted as the first comment right after the video is up (for example the li
 - Platforms: youtube, facebook, tiktok, linkedin
 - Language: vi
 - Visibility: public
+- AI label: no
 
 ## YouTube
 ### Title
@@ -67,7 +68,7 @@ Text posted as the first comment right after the video is up (for example the li
 | `## Tags` | Comma-separated words, no `#` | no tags or hashtags |
 | `## First comment` | One comment, plain text | no comment is posted |
 | `## Files` | `- Wide video:`, `- Wide SRT:`, `- Wide thumbnail:`, `- Tall video:`, `- Tall SRT:`, `- Tall thumbnail:`; file names relative to this file, or full paths. Wide = 16:9, tall = 9:16. List only files that exist | the user picks the files on the form |
-| `## Settings` | `- Platforms:` any of youtube, facebook, tiktok, linkedin · `- Language:` caption language code (vi, en) · `- Visibility:` public, private or unlisted | all four platforms, public; language from the form |
+| `## Settings` | `- Platforms:` any of youtube, facebook, tiktok, linkedin · `- Language:` caption language code (vi, en) · `- Visibility:` public, private or unlisted · `- AI label:` yes when the video has realistic AI-made voice, people or footage (sets YouTube's "altered or synthetic content", TikTok's "AI-generated content" and Facebook's AI label), else no | all four platforms, public; language from the form; AI label off |
 | `## YouTube`, `## YouTube Short`, `## Facebook`, `## Facebook Reel`, `## TikTok`, `## LinkedIn` | Sub-sections `### Title`, `### Description`, `### Tags`, `### First comment`, each optional. Text directly under the `## ` heading counts as the description | the main text is used |
 
 How each platform uses the parts:
@@ -97,7 +98,7 @@ For a tool or script that generates the file, the same content can be one JSON o
 - `title` and `description` are required; `tags` is a list of plain words; `first_comment` is optional.
 - `overrides`: keys `youtube`, `youtube_short`, `facebook`, `facebook_reel`, `tiktok`, `linkedin`; each may set `title`, `description`, `tags`, `first_comment`.
 - `files`: `wide` (16:9) and `tall` (9:16), each with `video`, `srt`, `thumbnail`; paths relative to the JSON file, or full paths.
-- `settings`: `platforms` (a list), `language`, `visibility`.
+- `settings`: `platforms` (a list), `language`, `visibility`, `ai_label` (true or false).
 - Any other key is ignored and reported as a problem. Notes for humans go in another file.
 
 The example at the end of this page, as JSON:
@@ -130,7 +131,8 @@ The example at the end of this page, as JSON:
       "tiktok",
       "linkedin"
     ],
-    "language": "vi"
+    "language": "vi",
+    "ai_label": true
   },
   "overrides": {
     "youtube": {
@@ -199,6 +201,7 @@ Chorus, AI agent, Claude Code, lập trình với AI
 ## Settings
 - Platforms: youtube, tiktok, linkedin
 - Language: vi
+- AI label: yes
 
 ## YouTube
 ### Description

@@ -16,13 +16,14 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 4. Captions: open the video's options (**Edit video** / **Captions** / **Video options**, the name varies) → **Upload** → attach `srt_file`, the copy named like `video.vi_VN.srt` (skip when it is null). Facebook rejects any other file name. Set it as the default caption language.
    Reels composer often has no SRT upload, only auto captions; if so, say that and ask whether to use auto captions or post as a normal video instead.
    Thumbnail / cover (when `thumbnail` is not null): in the same video options, **Thumbnail** (for a Reel: **Edit cover**) → **Upload image** → attach the image.
-5. Placement: Facebook only, unless the user asked for Instagram too. Untick anything they did not ask for.
-6. Final button: **Publish** (or **Schedule**). Press only with the user's yes.
-7. After publishing, open the Page's latest post and copy its link for the report.
+5. AI label ← `ai_label`: when it is true, look in the composer's options (often under **Advanced settings** or the video's options) for an AI label ("AI info", "Add AI label", "Made with AI") and turn it on. When the composer has none, post without it and report `--note "AI label not offered"`. When it is false, leave any such option off.
+6. Placement: Facebook only, unless the user asked for Instagram too. Untick anything they did not ask for.
+7. Final button: **Publish** (or **Schedule**). Press only with the user's yes.
+8. After publishing, open the Page's latest post and copy its link for the report.
 
 ## Personal profile
 
-Start: `https://www.facebook.com` → "What's on your mind" → **Photo/video** → attach the video → text ← `text` → audience **Public** unless told otherwise → **Post**.
+Start: `https://www.facebook.com` → "What's on your mind" → **Photo/video** → attach the video → text ← `text` → AI label as in step 5 above → audience **Public** unless told otherwise → **Post**.
 The profile composer has no SRT upload. After posting, the video's **⋯ → Edit video → Captions** sometimes offers it; try once, and report if it is not there.
 
 First comment (when `first_comment` is not empty): open the published post (or Reel) as the Page, write the comment under it, press Enter. Pinning is not offered on most Page posts; skip it when there is no such option.
