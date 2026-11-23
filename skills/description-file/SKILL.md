@@ -1,6 +1,6 @@
 ---
 name: description-file
-description: The exact structure of the description file (post file, Markdown or JSON) that the video-poster plugin reads when it posts a video to YouTube, Facebook, TikTok and LinkedIn. Read this whenever you write, generate or convert the upload text for a video (title, description, tags, first comment, per-platform versions, which files to post) and it will be posted with video-poster, or when someone asks what format that file needs — including "viết file đăng bài", "nội dung đăng bài", "title, mô tả, tags cho video". Follow it exactly so the file is read as is, with no rewriting.
+description: The exact structure of the description file (post file, Markdown or JSON) that the video-poster plugin reads when it posts a video to YouTube, Facebook, TikTok and LinkedIn. Read this whenever you write, generate or convert the upload text for a video (title, description, tags, first comment, per-platform versions, which files to post, subtitle translations and a translated title) and it will be posted with video-poster, or when someone asks what format that file needs — including "viết file đăng bài", "nội dung đăng bài", "title, mô tả, tags cho video". Follow it exactly so the file is read as is, with no rewriting.
 ---
 
 # The video-poster description file
@@ -40,6 +40,8 @@ Text posted as the first comment right after the video is up (for example the li
 - Tall video: demo-9x16.mp4
 - Tall SRT: demo-9x16.srt
 - Tall thumbnail: thumbnail-9x16.png
+- Wide SRT en: demo-16x9.en.srt
+- Tall SRT en: demo-9x16.en.srt
 
 ## Settings
 - Platforms: youtube, facebook, tiktok, linkedin
@@ -58,6 +60,10 @@ Text posted as the first comment right after the video is up (for example the li
 ## Facebook Reel
 ## TikTok
 ## LinkedIn
+
+## Translation en
+### Title
+### Description
 ```
 
 ## Sections
@@ -69,6 +75,8 @@ Text posted as the first comment right after the video is up (for example the li
 | `## First comment` | One comment, plain text | no comment is posted |
 | `## Files` | `- Wide video:`, `- Wide SRT:`, `- Wide thumbnail:`, `- Tall video:`, `- Tall SRT:`, `- Tall thumbnail:`; file names relative to this file, or full paths. Wide = 16:9, tall = 9:16. List only files that exist | the user picks the files on the form |
 | `## Settings` | `- Platforms:` any of youtube, facebook, tiktok, linkedin · `- Language:` caption language code (vi, en) · `- Visibility:` public, private or unlisted · `- AI label:` yes when the video has realistic AI-made voice, people or footage (sets YouTube's "altered or synthetic content", TikTok's "AI-generated content" and Facebook's AI label), else no | all four platforms, public; language from the form; AI label off |
+| `- Wide SRT <language>:`, `- Tall SRT <language>:` in `## Files` | Subtitles in another language for that video, e.g. `- Wide SRT en: demo.en.srt`. One line per language; the language code is `en`, `en-US`, `ja`… and must differ from the main language | only the main SRT |
+| `## Translation <language>` | `### Title` and/or `### Description` in that language, e.g. `## Translation en`. Text directly under the heading counts as the description | no translated title |
 | `## YouTube`, `## YouTube Short`, `## Facebook`, `## Facebook Reel`, `## TikTok`, `## LinkedIn` | Sub-sections `### Title`, `### Description`, `### Tags`, `### First comment`, each optional. Text directly under the `## ` heading counts as the description | the main text is used |
 
 How each platform uses the parts:
@@ -80,6 +88,14 @@ How each platform uses the parts:
 | Facebook, Facebook Reel | first line of the post | rest of the post + hashtags | up to 8 hashtags | 5000 |
 | TikTok | first line of the caption | rest of the caption + hashtags | up to 5 hashtags | 2200 in all; first comment 150 |
 | LinkedIn | first line of the post | rest of the post + hashtags | up to 5 hashtags | 3000 |
+
+Translations go where the platform takes them; the rest is skipped and shown on the Check screen:
+
+| Platform | Subtitles in more languages | Translated title and description |
+|---|---|---|
+| YouTube, YouTube Short | yes, each added as its own language | yes (Studio → Languages) |
+| Facebook (Page video) | yes, uploaded as `name.<locale>.srt` | no |
+| Facebook Reel, LinkedIn, TikTok | no | no |
 
 On Facebook, TikTok and LinkedIn the title becomes the first line of the text. When a platform's description should stand alone, give that platform a `### Title` that is the opening words of its `### Description`; the plugin then does not repeat it.
 
@@ -97,7 +113,8 @@ For a tool or script that generates the file, the same content can be one JSON o
 - `"video_poster": 1` is the marker. A `.json` file without it is not treated as a description file.
 - `title` and `description` are required; `tags` is a list of plain words; `first_comment` is optional.
 - `overrides`: keys `youtube`, `youtube_short`, `facebook`, `facebook_reel`, `tiktok`, `linkedin`; each may set `title`, `description`, `tags`, `first_comment`.
-- `files`: `wide` (16:9) and `tall` (9:16), each with `video`, `srt`, `thumbnail`; paths relative to the JSON file, or full paths.
+- `files`: `wide` (16:9) and `tall` (9:16), each with `video`, `srt`, `thumbnail`, and `translations` (subtitles in more languages: `{"en": "demo.en.srt"}`); paths relative to the JSON file, or full paths.
+- `translations`: a translated title and description per language: `{"en": {"title": "…", "description": "…"}}`.
 - `settings`: `platforms` (a list), `language`, `visibility`, `ai_label` (true or false).
 - Any other key is ignored and reported as a problem. Notes for humans go in another file.
 
@@ -118,7 +135,10 @@ The example at the end of this page, as JSON:
     "wide": {
       "video": "chorus-2-ngang.mp4",
       "srt": "chorus-2.srt",
-      "thumbnail": "thumbnail-ngang.png"
+      "thumbnail": "thumbnail-ngang.png",
+      "translations": {
+        "en": "chorus-2.en.srt"
+      }
     },
     "tall": {
       "video": "chorus-2-doc.mp4",
@@ -163,6 +183,12 @@ The example at the end of this page, as JSON:
       ],
       "first_comment": "Tải Chorus: https://example.com"
     }
+  },
+  "translations": {
+    "en": {
+      "title": "Stop babysitting your AI: build the place where it works alone | Chorus 2.0",
+      "description": "Stop holding your AI's hand. Chorus 2.0 lets you build the environment where AI plans, splits the work and learns from its mistakes.\nGet Chorus: https://example.com"
+    }
   }
 }
 ```
@@ -197,6 +223,7 @@ Chorus, AI agent, Claude Code, lập trình với AI
 - Wide thumbnail: thumbnail-ngang.png
 - Tall video: chorus-2-doc.mp4
 - Tall thumbnail: thumbnail-doc.png
+- Wide SRT en: chorus-2.en.srt
 
 ## Settings
 - Platforms: youtube, tiktok, linkedin
@@ -240,4 +267,11 @@ Làm việc với AI coding agent, phần mệt nhất không phải là viết 
 AIAgents, DeveloperTools, OpenSource
 ### First comment
 Tải Chorus: https://example.com
+
+## Translation en
+### Title
+Stop babysitting your AI: build the place where it works alone | Chorus 2.0
+### Description
+Stop holding your AI's hand. Chorus 2.0 lets you build the environment where AI plans, splits the work and learns from its mistakes.
+Get Chorus: https://example.com
 ```

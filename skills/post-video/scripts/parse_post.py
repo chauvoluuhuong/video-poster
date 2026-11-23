@@ -9,6 +9,8 @@ content: Markdown, marked by the line  <!-- video-poster: v1 -->  , and JSON, an
 {"structured": false} and Claude turns the text into post.json by hand instead.
 
 Prints {"structured": true, "post": {...}, "files": {...}, "settings": {...}, "problems": [...]}.
+Translations go into the post: "subtitles" {shape: {language: srt path}} for extra subtitle languages,
+"translations" {language: {"title", "description"}} for a translated title and description.
 """
 import argparse
 import json
@@ -59,7 +61,23 @@ def pairs_of(text):
 PLATFORMS = ("youtube", "facebook", "tiktok", "linkedin")
 OVERRIDE_KEYS = sorted(set(PLATFORM_KEYS.values()))
 TEXT_FIELDS = ("title", "description", "first_comment")
-JSON_KEYS = ("video_poster", "title", "description", "tags", "first_comment", "overrides", "files", "settings")
+JSON_KEYS = ("video_poster", "title", "description", "tags", "first_comment", "overrides", "files", "settings", "translations")
+LANG = re.compile(r"[a-z]{2,3}(?:[-_][a-z]{2,4})?$")
+EXTRA_SRT = re.compile(r"(wide|tall) (?:srt|subtitles?) ([a-z]{2,3}(?:[-_][a-z]{2,4})?)$")
+TRANSLATION = re.compile(r"translation ([a-z]{2,3}(?:[-_][a-z]{2,4})?)$")
+
+
+def lang_code(value):
+    """'EN', 'en_US', 'pt-BR' → 'en', 'en-us', 'pt-br'; None when it is not a language code."""
+    v = norm(str(value)).replace("_", "-")
+    return v if LANG.match(v) else None
+
+
+def add_subtitle(post, shape, lang, value, base_dir, problems):
+    path = resolve(value, base_dir)
+    post.setdefault("subtitles", {}).setdefault(shape, {})[lang] = path
+    if not os.path.isfile(path):
+        problems.append(f"Files: {shape} SRT {lang} not found: {value}")
 
 
 YES = {"yes", "true", "on", "1", "có", "co"}
@@ -127,12 +145,38 @@ def parse_json(data, base_dir="."):
             problems.append(f"files: unknown shape '{shape}' (use wide, tall)")
             continue
         for kind, value in slot.items():
-            if kind not in ("video", "srt", "thumbnail"):
+            if kind == "translations":
+                if not isinstance(value, dict):
+                    problems.append(f"files.{shape}.translations must be an object of language: SRT file")
+                    continue
+                for lang, srt in value.items():
+                    if not lang_code(lang) or not isinstance(srt, str) or not srt.strip():
+                        problems.append(f"files.{shape}.translations: '{lang}' must be a language code with an SRT file")
+                    else:
+                        add_subtitle(post, shape, lang_code(lang), srt.strip(), base_dir, problems)
+            elif kind not in ("video", "srt", "thumbnail"):
                 problems.append(f"files.{shape}: unknown key '{kind}'")
             elif isinstance(value, str) and value.strip():
                 files[shape][kind] = resolve(value.strip(), base_dir)
                 if not os.path.isfile(files[shape][kind]):
                     problems.append(f"Files: {shape} {kind} not found: {value}")
+
+    given = data.get("translations") or {}
+    if not isinstance(given, dict):
+        problems.append("translations must be an object of language: {title, description}")
+        given = {}
+    for lang, body in given.items():
+        if not lang_code(lang) or not isinstance(body, dict):
+            problems.append(f"translations: '{lang}' must be a language code with {{title, description}}")
+            continue
+        target = post.setdefault("translations", {}).setdefault(lang_code(lang), {})
+        for key, value in body.items():
+            if key not in ("title", "description"):
+                problems.append(f"translations.{lang}: unknown key '{key}' (use title, description)")
+            elif isinstance(value, str):
+                target[key] = value.replace("\r\n", "\n").strip()
+            else:
+                problems.append(f"translations.{lang}: {key} must be text")
 
     given = data.get("settings") or {}
     if not isinstance(given, dict):
@@ -163,6 +207,23 @@ def finish(post, files, settings, problems):
     if settings.get("language"):
         post["language"] = settings["language"]
     post["overrides"] = {k: v for k, v in post["overrides"].items() if v}
+    main = (post.get("language") or "").replace("_", "-")
+    for lang, body in list((post.get("translations") or {}).items()):
+        body = {k: v for k, v in body.items() if v}
+        if not body:
+            del post["translations"][lang]
+        elif lang == main:
+            problems.append(f"Translation {lang} is the post's own language; it was ignored")
+            del post["translations"][lang]
+        else:
+            post["translations"][lang] = body
+    for shape, langs in (post.get("subtitles") or {}).items():
+        if main in langs:
+            problems.append(f"Files: {shape} SRT {main} is the main language; give it as the {shape} SRT instead")
+            del langs[main]
+    for key in ("translations", "subtitles"):
+        if key in post and not any(post[key].values()):
+            del post[key]
     if not post["title"]:
         problems.append("No title")
     if not post["description"]:
@@ -218,7 +279,10 @@ def parse(text, base_dir="."):
             elif h == "files":
                 section = "skip"
                 for key, value in pairs_of(body).items():
-                    if key in FILE_KEYS:
+                    extra = EXTRA_SRT.match(key)
+                    if extra:
+                        add_subtitle(post, extra.group(1), lang_code(extra.group(2)), value, base_dir, problems)
+                    elif key in FILE_KEYS:
                         shape, kind = FILE_KEYS[key]
                         files[shape][kind] = resolve(value, base_dir)
                         if not os.path.isfile(files[shape][kind]):
@@ -242,11 +306,21 @@ def parse(text, base_dir="."):
                             settings["ai_label"] = yes_no(value)
                     else:
                         problems.append(f"Settings: unknown line '{key}'")
+            elif TRANSLATION.match(h):
+                section = ("translation", lang_code(TRANSLATION.match(h).group(1)))
+                post.setdefault("translations", {}).setdefault(section[1], {})
+                if body:
+                    post["translations"][section[1]]["description"] = body
             else:
                 section = "skip"
                 problems.append(f"Unknown section '## {heading}' was ignored")
         elif level == 3:
-            if section in (None, "skip") or h not in FIELD_KEYS:
+            if isinstance(section, tuple):
+                if h in ("title", "description"):
+                    post["translations"][section[1]][h] = body
+                else:
+                    problems.append(f"'### {heading}' inside '## Translation {section[1]}': use Title or Description")
+            elif section in (None, "skip") or h not in FIELD_KEYS:
                 problems.append(f"'### {heading}' is not inside a platform section, or is not Title / Description / Tags / First comment")
             else:
                 setfield(post["overrides"][section], FIELD_KEYS[h], body)

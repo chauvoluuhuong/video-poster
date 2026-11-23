@@ -83,6 +83,7 @@ How to transform:
 - **Tags**: collect every `#hashtag` and every "tags:" list, remove them from the description, drop the `#`. If they gave none, propose 5–8 from the text and list `"tags"` in `written_by_claude`.
 - **Per-platform sections** in the source ("YouTube:", "TikTok:", "Short description:") go into `overrides`, not into the main description. Override keys: `youtube`, `youtube_short`, `facebook`, `facebook_reel`, `tiktok`, `linkedin`; each may set `title`, `description`, `tags`, `first_comment`.
 - **First comment**: a "first comment" / "bình luận đầu tiên" / "pinned comment" part in the source goes into `first_comment` (or the platform's override), never into the description. Do not write one yourself; when the source has none, leave it out. The Check screen shows a First comment box for every upload, which the user can fill or clear.
+- **Translations**: subtitle files in another language go in `subtitles` (`{"wide": {"en": "/path/video.en.srt"}}`), a translated title and description in `translations` (`{"en": {"title": "…", "description": "…"}}`). Only when the user gave them; never translate yourself unasked.
 - **Chapters / timestamps** (`0:00 Intro`) belong to the 16:9 cut: put the description with chapters in the `youtube` override and give `youtube_short` the plain one. YouTube needs the first chapter to be `0:00`.
 - **Links**: keep on YouTube, Facebook and LinkedIn. TikTok captions do not make links clickable; leave them out of a `tiktok` override unless the user wants them.
 - **`written_by_claude`** marks parts you wrote (`title`, `description`, `tags`); the Check screen labels them. **`notes`** are short lines the user should see at the top of the Check screen: choices you made, things you left out.
@@ -115,16 +116,18 @@ Run it in the background like the first wait, and tell the user in one line that
   If the instruction is unclear, or asks for something a text change cannot do (another video, another platform), do not guess: put one line saying so first in `warnings` (for another file or platform: "press Back to change files"), push the file unchanged, and wait again. Refine can happen any number of times; nothing is posted by it.
 - `{"action": "back"}`: they went back to the form. Go to `wait submit` in step 1 and redo steps 2–3.
 - `{"action": "cancel"}`: `form.py stop`, say nothing was posted.
-- `{"action": "post", "posts": [...]}`: the approval. `posts` is the final list, with the user's edits. Upload exactly these: for each one `video`, `thumbnail` (may be null), `fields` (by `key`: `title`, `description`, `tags`, `text`, `caption`), `srt_file` (may be null), `visibility`, `ai_label` (the user's choice for this upload; they can change it per upload on the Check screen), `key` (platform), `shape` (`wide` / `tall`), `id`.
+- `{"action": "post", "posts": [...]}`: the approval. `posts` is the final list, with the user's edits. Upload exactly these: for each one `video`, `thumbnail` (may be null), `fields` (by `key`: `title`, `description`, `tags`, `text`, `caption`), `srt_file` (may be null), `extra_srt` and `translations` (subtitles in more languages, and a translated title and description, where the platform takes them), `visibility`, `ai_label` (the user's choice for this upload; they can change it per upload on the Check screen), `key` (platform), `shape` (`wide` / `tall`), `id`.
 
 Where captions go:
 
-| Platform | SRT upload |
-|---|---|
-| YouTube | yes |
-| Facebook | yes, with the renamed copy in `srt_file`; Reels often offer only auto captions |
-| LinkedIn | yes |
-| TikTok | no upload on the web: turn on TikTok's auto captions |
+| Platform | SRT upload | More subtitle languages (`extra_srt`) | Translated title and description |
+|---|---|---|---|
+| YouTube (video and Short) | yes | yes, one file per language | yes, the Languages tab |
+| Facebook | yes, with the renamed copy in `srt_file`; Reels often offer only auto captions | Page videos yes (copies named `video.en_US.srt`); Reels no | no |
+| LinkedIn | yes | no, one caption file | no |
+| TikTok | no upload on the web: turn on TikTok's auto captions | no | no |
+
+`prepare.py` decides this: an upload's `extra_srt` and `translations` hold only what its platform takes, and its captions line on the Check screen names what was skipped.
 
 ## 4. Report progress on the page
 

@@ -16,13 +16,16 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
    - Paid promotion: leave at the default "No" unless the user's text mentions a sponsor; then ask.
    - Thumbnail (when `thumbnail` is not null, 16:9 video only): on the Details step, **Thumbnail → Upload file**, attach the image (under 2 MB). The option is missing on channels without phone verification: skip it and report it. Shorts take no custom thumbnail here.
 3. **Video elements** → **Add subtitles** → pick the language → **Upload file** → **With timing** → attach `srt_file` (skip this step when it is null) → check a few lines appear → **Done**.
+   Then, for each entry in `extra_srt` (`language`, `file`): **Add subtitles** again → **Add language** → that language → **Upload file** → **With timing** → attach `file` → **Done**. One language per file; never replace the main one.
    If the subtitles row is greyed out, the video is still processing: finish the upload, then open the video in Studio → **Subtitles** and add them there.
 4. **Checks**: wait. A copyright or ad-suitability issue → stop and tell the user.
 5. **Visibility**: Public unless told otherwise (Private, Unlisted, or Schedule with the date and time they gave).
 6. Final button: **Publish** (or **Save** / **Schedule**). Press only with the user's yes.
 7. The dialog then shows the video link (`https://youtu.be/...`). Copy it for the report.
 
-8. First comment (when `first_comment` is not empty): open the video's watch page (for a Short, its Shorts page → comments icon). While the video is still processing, comments may be closed; wait until it plays. Click the comment box, paste the text, **Comment**. Then on your comment: **⋮ → Pin** → confirm.
+8. Translated title and description (when `translations` is not empty, e.g. `{"en": {"title": …, "description": …}}`): open the video in Studio → **Languages** (or **Subtitles**) → **Add language** → that language (skip when a row for it already exists from the subtitles) → **Title & description** → **Add** → paste `title` and `description` exactly → **Publish**. Do it after step 7, the video must exist first. If the dialog offers only subtitles, report `--note "translated title not offered"`.
+
+9. First comment (when `first_comment` is not empty): open the video's watch page (for a Short, its Shorts page → comments icon). While the video is still processing, comments may be closed; wait until it plays. Click the comment box, paste the text, **Comment**. Then on your comment: **⋮ → Pin** → confirm.
 
 Notes
 - A `tall` upload (`id` `youtube-tall`) is the Short: same steps, YouTube decides it is a Short from the shape and length. When both uploads exist, do the 16:9 video first.
