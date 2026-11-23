@@ -275,7 +275,7 @@ function renderPreview(pv){
       sec.append(el('div', {class: 'fl'}, el('span', {}, f.label, f.by_claude ? el('span', {class: 'tag you', style: 'margin-left:6px'}, 'written by Claude') : null), count), input);
       setTimeout(upd);
     }
-    for (const line of [post.captions, post.thumbnail_info]) if (line) sec.append(el('div', {class: 'cap ' + (line.ok ? 'ok' : 'no')}, (line.ok ? '✓ ' : '⚠ ') + line.text));
+    for (const line of [post.captions, post.translations_info, post.thumbnail_info]) if (line) sec.append(el('div', {class: 'cap ' + (line.ok ? 'ok' : 'no')}, (line.ok ? '✓ ' : '⚠ ') + line.text));
     if (post.ai_info) {
       const box = el('input', {type: 'checkbox', id: 'ai-' + post.id, checked: !!post.ai_label});
       box.dataset.ai = '1';

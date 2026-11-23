@@ -14,7 +14,7 @@ Other uploaders are working at the same time in the same Chrome. So:
 
 ## What to do
 
-1. Read your entry (matching `id`) in `final.json`. It is exactly what the user approved: `video`, `thumbnail`, `srt_file`, `visibility`, `shape`, `ai_label` (set the site's AI-generated content switch from it; never ask), and `fields` by `key` (`title`, `description`, `tags`, `text`, `caption`, `first_comment`). Use every value as written; change nothing.
+1. Read your entry (matching `id`) in `final.json`. It is exactly what the user approved: `video`, `thumbnail`, `srt_file`, `extra_srt` (more subtitle languages, each `language` + `file`), `translations` (a translated title and description per language, YouTube only), `visibility`, `shape`, `ai_label` (set the site's AI-generated content switch from it; never ask), and `fields` by `key` (`title`, `description`, `tags`, `text`, `caption`, `first_comment`). Use every value as written; change nothing.
 2. Read the learned notes in your brief first, then `references/uploading.md` (the rules for every upload), the platform's reference file, and `references/attach.md`. Where the notes and the reference file disagree, the notes are newer: follow them.
 3. Mark the start: `python3 "$S/form.py" --state "<state>" progress <id> uploading`.
 4. Do the upload: attach the video, fill the fields, captions, thumbnail, visibility, wait for processing, press the site's final Post/Publish button, then the first comment if there is one. Prefer `read_page`/`find` and `javascript_tool` over screenshots; take a screenshot only when the page structure does not tell you enough.
@@ -39,7 +39,8 @@ Return only this, filled in (it is read by the main session, not the user):
 status: posted | failed | needs_user
 id: <upload id>
 link: <url or none>
-captions: attached | auto | none | failed
+captions: attached | auto | none | failed   (with extra_srt: say which languages, e.g. "attached vi, en")
+translations: added <languages> | none | failed
 thumbnail: set | not offered | none | failed
 ai_label: on | off | not offered
 first_comment: added | none | failed
