@@ -14,6 +14,7 @@ Fields come from this upload\'s entry in `final.json` (`fields`, by `key`):
 2. Text / description ← `text` (title, description and hashtags are already joined).
 3. Leave a separate title field, if there is one, empty: the first line of `text` is the title.
 4. Captions: open the video's options (**Edit video** / **Captions** / **Video options**, the name varies) → **Upload** → attach `srt_file`, the copy named like `video.vi_VN.srt` (skip when it is null). Facebook rejects any other file name. Set it as the default caption language.
+   Then, for each entry in `extra_srt`: **Upload** again → attach its `file` (already named like `video.en_US.srt`); Facebook reads the language from the name. Do not make it the default.
    Reels composer often has no SRT upload, only auto captions; if so, say that and ask whether to use auto captions or post as a normal video instead.
    Thumbnail / cover (when `thumbnail` is not null): in the same video options, **Thumbnail** (for a Reel: **Edit cover**) → **Upload image** → attach the image.
 5. AI label ← `ai_label`: when it is true, look in the composer's options (often under **Advanced settings** or the video's options) for an AI label ("AI info", "Add AI label", "Made with AI") and turn it on. When the composer has none, post without it and report `--note "AI label not offered"`. When it is false, leave any such option off.

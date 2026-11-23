@@ -7,7 +7,7 @@ The user picks videos, SRT files and a description on a local page, checks every
 | Skill | `skills/post-video/SKILL.md` | The steps Claude follows; how messy text becomes `post.json` |
 | Form server + CLI | `skills/post-video/scripts/form.py` | Local page on 127.0.0.1 (random port, one-time token); `start`, `wait submit`, `preview`, `wait decision`, `progress`, `done`, `stop` |
 | Page | `skills/post-video/scripts/form.html` | Three screens: Files, Check, Post |
-| Prepare | `skills/post-video/scripts/prepare.py` | Form + `post.json` → one entry per upload, with warnings |
+| Prepare | `skills/post-video/scripts/prepare.py` | Form + `post.json` → one entry per upload, with warnings; gives each upload only the translations its platform takes (`SUPPORTS`: extra subtitle languages on YouTube and Facebook Page videos, a translated title and description on YouTube) |
 | Text builder | `skills/post-video/scripts/build_post.py` | Per-platform limits, hashtags, YouTube tags, per-variant overrides |
 | SRT cleaner | `skills/post-video/scripts/check_srt.py` | UTF-8, numbering, time format, order; Facebook's `name.<locale>.srt` copy |
 | Attach helper | `skills/post-video/scripts/attach.py`, `references/attach.md` | Gets a file of any size into a site's file input: parts under 10 MB go through the browser tool, the page joins and verifies them (SHA-256) |

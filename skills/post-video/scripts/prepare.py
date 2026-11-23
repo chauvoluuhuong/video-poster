@@ -6,6 +6,9 @@ Usage:  prepare.py submit.json post.json --out preview.json [--work DIR]
 For every upload it: picks the video (16:9 or 9:16), builds the text with build_post,
 cleans the SRT with check_srt into --work (default: the folder of --out), reads the video's
 length and size with ffprobe when it is installed, and collects things the user should check.
+Translations in post.json ("subtitles": extra SRT per shape and language, "translations": a title and
+description per language) go to the uploads whose platform takes them (SUPPORTS); the others get
+a line saying they were skipped.
 Prints {"posts": N, "warnings": N}; the full result is in --out.
 """
 import argparse
@@ -43,6 +46,31 @@ AI_INFO = {  # what the AI label sets on each site, when on / off
 LOCALES = {"vi": "vi_VN", "en": "en_US", "ja": "ja_JP", "ko": "ko_KR", "zh": "zh_CN", "fr": "fr_FR",
            "de": "de_DE", "es": "es_ES", "pt": "pt_BR", "id": "id_ID", "th": "th_TH"}
 LIM = build_post.LIMITS
+# What each upload can take besides its main SRT: extra subtitle languages, a translated title/description.
+SUPPORTS = {
+    ("youtube", "wide"): (True, True), ("youtube", "tall"): (True, True),
+    ("facebook", "wide"): (True, False), ("facebook", "tall"): (False, False),
+    ("linkedin", "wide"): (False, False), ("linkedin", "tall"): (False, False),
+    ("tiktok", "wide"): (False, False), ("tiktok", "tall"): (False, False),
+}
+NO_EXTRA = {"facebook": "Reels take no extra caption files", "linkedin": "LinkedIn takes one caption file",
+            "tiktok": "TikTok takes no caption files"}
+
+
+def locale_of(lang):
+    return LOCALES.get(lang.split("-")[0].split("_")[0].lower())
+
+
+def translated(body, warnings, lang):
+    """A translated title/description, cleaned and kept within YouTube's limits."""
+    out = {}
+    if body.get("title"):
+        out["title"] = build_post.cut(build_post.clean_text(body["title"]).replace("<", "").replace(">", ""),
+                                      LIM["youtube"]["title"], warnings, f"YouTube title ({lang})")
+    if body.get("description"):
+        out["description"] = build_post.cut(build_post.clean_text(body["description"]).replace("<", "‹").replace(">", "›"),
+                                            LIM["youtube"]["text"], warnings, f"YouTube description ({lang})")
+    return out
 
 
 def probe(path):
@@ -117,6 +145,27 @@ def prepare(form, post, work):
     if "facebook" in form["platforms"] and srt and not locale:
         warnings.append(f"Facebook needs a locale for caption language '{lang}' and none is known: Facebook posts without captions.")
 
+    extra = {}  # shape -> [{language, file, facebook_file?}]
+    for s, langs in (post.get("subtitles") or {}).items():
+        if s not in videos:
+            continue
+        stem = os.path.splitext(os.path.basename(videos[s]["video"]))[0]
+        for code, path in langs.items():
+            fb = locale_of(code) if "facebook" in form["platforms"] and s == "wide" else None
+            res = check_srt.clean(path, os.path.join(work, f"{stem}.{code}.clean.srt"), facebook_locale=fb, video=videos[s]["video"])
+            if not res["ok"]:
+                warnings.append(f"The {SHAPE[s]} {code} SRT could not be read ({res['error']}): posting without it.")
+                continue
+            if res["problems"]:
+                warnings.append(f"The {SHAPE[s]} {code} SRT has {len(res['problems'])} timing problem(s), e.g. {res['problems'][0]}.")
+            if info[s] and res["ends_ms"] / 1000 > info[s]["seconds"] + 5:
+                warnings.append(f"The {SHAPE[s]} {code} SRT runs to {res['ends_at']} but the video is {clock(info[s]['seconds'])} long: "
+                                "is it the caption file of another cut?")
+            extra.setdefault(s, []).append({"language": code, "file": res["clean_file"], "facebook_file": res.get("facebook_file"),
+                                            "cues": res["cues"]})
+    titles = {code: translated(body, warnings, code) for code, body in (post.get("translations") or {}).items()}
+    titles = {code: body for code, body in titles.items() if body}
+
     posts = []
     for platform in build_post.PLATFORMS:
         choice = form["platforms"].get(platform)
@@ -157,6 +206,29 @@ def prepare(form, post, work):
                 srt_file = cap["clean_file"]
                 captions = {"ok": True, "text": f"Captions: {os.path.basename(v['srt'])} · {cap['cues']} lines · {lang}"}
 
+            takes_srt, takes_text = SUPPORTS[(platform, s)]
+            extra_srt, skipped = [], []
+            for t in extra.get(s, []):
+                f = t["facebook_file"] if platform == "facebook" else t["file"]
+                if takes_srt and f:
+                    extra_srt.append({"language": t["language"], "file": f})
+                else:
+                    skipped.append(t["language"])
+            if extra_srt:
+                names = ", ".join(f"{t['language']} ({os.path.basename(t['file'])})" for t in extra_srt)
+                captions["text"] += f" · also subtitles: {names}"
+            if skipped:
+                why = NO_EXTRA[platform] if not takes_srt else "no locale known for Facebook"
+                captions["text"] += f" · {', '.join(skipped)} subtitles skipped: {why}"
+            post_titles = titles if takes_text else {}
+            translations_info = None
+            if post_titles:
+                translations_info = {"ok": True, "text": "Translated title and description: " + ", ".join(
+                    f"{code} ({' + '.join(body)})" for code, body in post_titles.items())}
+            elif titles:
+                translations_info = {"ok": False, "text": f"{NAMES[platform]} has no translated title or description: skipped "
+                                                          + ", ".join(titles)}
+
             thumb = v.get("thumbnail") or None
             if not thumb:
                 thumbnail_info = None
@@ -184,6 +256,7 @@ def prepare(form, post, work):
                 "visibility": form.get("visibility", "public"),
                 "meta": meta, "video": v["video"], "srt_file": srt_file, "language": lang,
                 "captions": captions, "thumbnail": thumb, "thumbnail_info": thumbnail_info,
+                "extra_srt": extra_srt, "translations": post_titles, "translations_info": translations_info,
                 "fields": fields_for(platform, built, by_claude),
                 "ai_label": form.get("ai_label") is True, "ai_info": AI_INFO[platform],
             })
