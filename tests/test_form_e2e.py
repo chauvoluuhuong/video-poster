@@ -254,6 +254,35 @@ class FormFlow(unittest.TestCase):
             self.assertEqual(f.read(), b"\x89PNG")
         self.assertEqual(self.http("/api/drop", {"name": "t.png", "b64": "!!"})[0], 400)
 
+    def test_view_file(self):
+        """The View button: chosen videos and covers are served (with Range for seeking), nothing else is."""
+        import urllib.parse
+        base, tok = self.srv["url"].split("/?t=")
+        video = self.files["wide.mp4"]
+        with open(video, "w", encoding="utf-8") as f:
+            f.write("0123456789")
+
+        def get(path, token=tok, rng=None):
+            url = f"{base}/api/file?t={urllib.parse.quote(token)}&p={urllib.parse.quote(path)}"
+            req = urllib.request.Request(url, headers={"Range": rng} if rng else {})
+            try:
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    return r.status, r.headers, r.read()
+            except urllib.error.HTTPError as e:
+                with e:
+                    return e.code, e.headers, e.read()
+
+        code, headers, body = get(video)
+        self.assertEqual((code, headers["Content-Type"], body), (200, "video/mp4", b"0123456789"))
+        code, headers, body = get(video, rng="bytes=2-5")
+        self.assertEqual((code, headers["Content-Range"], body), (206, "bytes 2-5/10", b"2345"))
+        self.assertEqual(get(video, rng="bytes=-3")[2], b"789")
+        self.assertEqual(get(video, rng="bytes=20-")[0], 416)
+        self.assertEqual(get(self.files["desc.md"])[0], 415)  # not a video or image
+        self.assertEqual(get(os.path.join(self.tmp, "gone.png"))[0], 404)
+        self.assertEqual(get(video, token="wrong")[0], 403)
+        self.assertEqual(get(video, token="é")[0], 403)
+
     def test_fallback_shape(self):
         form = self.form(videos={"wide": {"video": self.files["wide.mp4"], "srt": ""}, "tall": {"video": "", "srt": ""}},
                          platforms={"youtube": "both", "tiktok": "tall"})
