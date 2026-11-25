@@ -55,6 +55,9 @@ The user writes an instruction and presses Apply with Claude. The server saves t
 ## Thumbnails
 `videos.<shape>.thumbnail` on the form → `thumbnail` on each upload. YouTube Shorts take none on the web (shown as skipped). A missing thumbnail option on a site never blocks the post.
 
+## View on the Files screen
+Each Video and Cover row has a View button (greyed out until a path is filled in) that opens the file in a preview window over the page: the video plays with controls, the cover shows as an image. Esc, Close or a click outside closes it and stops the video. The page loads it from `GET /api/file?t=TOKEN&p=PATH`, which serves only video and image extensions (`VIEWABLE` in `form.py`), answers Range requests so the video can be seeked, and needs the same token and Host check as every other route. A missing file or a format the browser cannot play shows a short message in the window.
+
 ## First comment
 `post.json` → `first_comment` (per-platform overrides allowed) becomes an optional field on every upload. After an upload is published Claude adds it as a comment and pins it where possible; a failed comment does not fail the upload.
 
