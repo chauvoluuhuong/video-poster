@@ -30,6 +30,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -89,6 +90,28 @@ def pick_file(kind):
 
 
 SMALL = 2 * 1024 * 1024  # dropped files up to this size may be sent as content (SRT, text)
+
+# Files the page may show with its View button: only videos and images, never anything else on disk.
+VIEWABLE = {".mp4": "video/mp4", ".m4v": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm",
+            ".mkv": "video/x-matroska", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".webp": "image/webp", ".gif": "image/gif"}
+
+
+def byte_range(header, size):
+    """Parse an HTTP Range header for one range. Returns (start, end) inclusive, None for the whole
+    file, or "bad" when the range cannot be served."""
+    if not header or not header.startswith("bytes="):
+        return None
+    first, _, last = header[6:].split(",")[0].strip().partition("-")
+    try:
+        if first:
+            start, end = int(first), int(last) if last else size - 1
+        else:
+            start, end = max(0, size - int(last)), size - 1
+    except ValueError:
+        return None
+    end = min(end, size - 1)
+    return "bad" if start > end else (start, end)
 
 
 def locate_file(name, size, mtime_ms, hint_dirs):
@@ -253,10 +276,47 @@ def make_handler(st):
             host = (self.headers.get("Host") or "").split(":")[0]
             if host not in ("127.0.0.1", "localhost"):
                 return False
-            token = self.headers.get("X-Token") or ""
-            if "?t=" in self.path:
-                token = token or self.path.split("?t=", 1)[1].split("&")[0]
-            return secrets.compare_digest(token, st.token)
+            token = self.headers.get("X-Token") or self.query().get("t", "")
+            return secrets.compare_digest(token.encode(), st.token.encode())
+
+        def query(self):
+            return {k: v[0] for k, v in urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).items()}
+
+        def send_local_file(self, path):
+            """Serve a chosen video or image to the View button, with Range so a video can be seeked."""
+            ctype = VIEWABLE.get(os.path.splitext(path)[1].lower())
+            if not ctype:
+                return self.send(415, {"error": "only videos and images can be viewed"})
+            if not os.path.isfile(path):
+                return self.send(404, {"error": "file not found"})
+            size = os.path.getsize(path)
+            rng = byte_range(self.headers.get("Range"), size)
+            if rng == "bad":
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                return self.end_headers()
+            start, end = rng or (0, size - 1)
+            self.send_response(206 if rng else 200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(end - start + 1))
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Cache-Control", "no-store")
+            if rng:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            self.end_headers()
+            try:
+                with open(path, "rb") as f:
+                    f.seek(start)
+                    left = end - start + 1
+                    while left > 0:
+                        chunk = f.read(min(left, 1024 * 1024))
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
+                        left -= len(chunk)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # the browser stopped reading (seeked or closed the viewer)
 
         def do_GET(self):
             if not self.allowed():
@@ -267,6 +327,8 @@ def make_handler(st):
                     return self.send(200, f.read(), "text/html")
             if route == "/api/state":
                 return self.send(200, st.public())
+            if route == "/api/file":
+                return self.send_local_file(expand(self.query().get("p", "")))
             self.send(404, {"error": "not found"})
 
         def do_POST(self):

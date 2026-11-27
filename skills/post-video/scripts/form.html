@@ -72,6 +72,13 @@ input.t{width:100%;border:1px solid var(--line);border-radius:6px;padding:6px 8p
 @keyframes r{to{transform:rotate(360deg)}}
 .st-posted{color:var(--ok)}.st-failed{color:var(--bad)}.st-waiting,.st-skipped{color:var(--muted)}
 a{color:var(--accent)}
+button.view{padding:5px 9px}
+.viewer{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.viewer-box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;max-width:min(960px,100%);max-height:100%;display:flex;flex-direction:column;gap:8px}
+.viewer-head{display:flex;align-items:center;gap:10px}
+.viewer-head span{flex:1;min-width:0;font:12px ui-monospace,Menlo,monospace;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#viewer-body{display:flex;justify-content:center;min-height:0}
+#viewer-body video,#viewer-body img{display:block;max-width:100%;max-height:calc(100vh - 110px);border-radius:6px;background:#000}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -88,15 +95,15 @@ a{color:var(--accent)}
       <div class="two">
         <div class="slot" data-drop="wide">
           <div class="slot-head"><span class="shape w"></span><div>Wide video 16:9<small>YouTube video, Facebook, LinkedIn</small></div></div>
-          <div class="pick"><label for="wide-video">Video</label><input class="path" id="wide-video" placeholder="No video"><button data-pick="video" data-for="wide-video">Choose…</button></div>
+          <div class="pick"><label for="wide-video">Video</label><input class="path" id="wide-video" placeholder="No video"><button data-pick="video" data-for="wide-video">Choose…</button><button class="view" data-view="wide-video" title="Preview this file" disabled>View</button></div>
           <div class="pick"><label for="wide-srt">SRT</label><input class="path" id="wide-srt" placeholder="No caption file"><button data-pick="srt" data-for="wide-srt">Choose…</button></div>
-          <div class="pick"><label for="wide-thumb">Cover</label><input class="path" id="wide-thumb" placeholder="No thumbnail image"><button data-pick="image" data-for="wide-thumb">Choose…</button></div>
+          <div class="pick"><label for="wide-thumb">Cover</label><input class="path" id="wide-thumb" placeholder="No thumbnail image"><button data-pick="image" data-for="wide-thumb">Choose…</button><button class="view" data-view="wide-thumb" title="Preview this file" disabled>View</button></div>
         </div>
         <div class="slot" data-drop="tall">
           <div class="slot-head"><span class="shape t"></span><div>Vertical video 9:16<small>YouTube Short, TikTok, Reel</small></div></div>
-          <div class="pick"><label for="tall-video">Video</label><input class="path" id="tall-video" placeholder="No video"><button data-pick="video" data-for="tall-video">Choose…</button></div>
+          <div class="pick"><label for="tall-video">Video</label><input class="path" id="tall-video" placeholder="No video"><button data-pick="video" data-for="tall-video">Choose…</button><button class="view" data-view="tall-video" title="Preview this file" disabled>View</button></div>
           <div class="pick"><label for="tall-srt">SRT</label><input class="path" id="tall-srt" placeholder="No caption file"><button data-pick="srt" data-for="tall-srt">Choose…</button></div>
-          <div class="pick"><label for="tall-thumb">Cover</label><input class="path" id="tall-thumb" placeholder="No thumbnail image"><button data-pick="image" data-for="tall-thumb">Choose…</button></div>
+          <div class="pick"><label for="tall-thumb">Cover</label><input class="path" id="tall-thumb" placeholder="No thumbnail image"><button data-pick="image" data-for="tall-thumb">Choose…</button><button class="view" data-view="tall-thumb" title="Preview this file" disabled>View</button></div>
         </div>
       </div>
       <p class="hint" id="pickhint">One video is enough. Drag files onto a box, press Choose, or paste a path.</p>
@@ -149,6 +156,14 @@ a{color:var(--accent)}
   </div>
 
   <div id="cancelled" class="center" hidden>Cancelled. Nothing was posted. You can close this page.</div>
+</div>
+
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Preview" hidden>
+  <div class="viewer-box">
+    <div class="viewer-head"><span id="viewer-name"></span><button id="viewer-close">Close</button></div>
+    <div id="viewer-body"></div>
+    <p class="hint" id="viewer-err" hidden></p>
+  </div>
 </div>
 
 <div class="bar" id="bar"><div class="bar-in">
@@ -213,7 +228,7 @@ function countUploads(){
   for (const c of Object.values(f.platforms)) n += c === 'both' ? (has.wide + has.tall || 0) : (has.wide || has.tall ? 1 : 0);
   return {n, platforms: Object.keys(f.platforms).length};
 }
-function formNote(){ const c = countUploads(); $('barnote').textContent = `${c.platforms} platform${c.platforms === 1 ? '' : 's'} · ${c.n} upload${c.n === 1 ? '' : 's'}`; }
+function formNote(){ syncView(); const c = countUploads(); $('barnote').textContent = `${c.platforms} platform${c.platforms === 1 ? '' : 's'} · ${c.n} upload${c.n === 1 ? '' : 's'}`; }
 document.querySelectorAll('[data-pick]').forEach(b => b.onclick = async () => {
   b.disabled = true;
   const {data} = await api('/api/pick', {kind: b.dataset.pick});
@@ -222,6 +237,28 @@ document.querySelectorAll('[data-pick]').forEach(b => b.onclick = async () => {
   if (data.unsupported) $('pickhint').textContent = 'The file picker is not available on this system: paste the full path instead.';
 });
 $('form').addEventListener('input', formNote);
+
+/* ---------- view a chosen video or cover ---------- */
+function syncView(){ document.querySelectorAll('[data-view]').forEach(b => { b.disabled = !$(b.dataset.view).value.trim(); }); }
+function openViewer(id){
+  const path = $(id).value.trim();
+  if (!path) return;
+  const src = `/api/file?t=${encodeURIComponent(token)}&p=${encodeURIComponent(path)}`;
+  const err = $('viewer-err');
+  const fail = () => { err.hidden = false; err.textContent = 'Cannot show this file. Check the path, or the browser may not play this format.'; };
+  const media = id.endsWith('-thumb') ? el('img', {src, alt: 'Cover preview'}) : el('video', {src, controls: true, autoplay: true, playsInline: true});
+  media.addEventListener('error', fail);
+  err.hidden = true;
+  $('viewer-name').textContent = path.split('/').pop(); $('viewer-name').title = path;
+  $('viewer-body').replaceChildren(media);
+  $('viewer').hidden = false;
+  $('viewer-close').focus();
+}
+function closeViewer(){ $('viewer').hidden = true; $('viewer-body').replaceChildren(); }  // removing the video stops it
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => openViewer(b.dataset.view));
+$('viewer-close').onclick = closeViewer;
+$('viewer').addEventListener('click', e => { if (e.target === $('viewer')) closeViewer(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('viewer').hidden) closeViewer(); });
 
 /* ---------- drag and drop ---------- */
 // A browser never tells a page where a dropped file lives, only its name, size and date.
